@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateEmail } from "@/lib/email-validator";
 import { sanitizeEmail, rateLimit, clientId, safeErrorMessage } from "@/lib/security";
+import { saveValidation } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,13 @@ export async function POST(req: NextRequest) {
         .map((e) => sanitizeEmail(e))
         .filter((e) => e.length > 0);
       const results = await Promise.all(capped.map((e) => validateEmail(e)));
+      for (const r of results) {
+        try {
+          saveValidation(r);
+        } catch (e) {
+          console.error("DB save (bulk validation) failed:", e);
+        }
+      }
       return NextResponse.json({ results, count: results.length });
     }
 
@@ -43,6 +51,11 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await validateEmail(email);
+    try {
+      saveValidation(result);
+    } catch (e) {
+      console.error("DB save (validation) failed:", e);
+    }
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json({ error: safeErrorMessage(err) }, { status: 500 });

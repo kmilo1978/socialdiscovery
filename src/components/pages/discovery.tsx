@@ -167,6 +167,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
       });
 
       onResults({
+        searchId: data.searchId,
         leads: data.leads,
         queries: data.queries,
         provider: data.provider,

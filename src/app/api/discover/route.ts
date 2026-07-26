@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildFootprints } from "@/lib/footprints";
+import { randomUUID } from "node:crypto";
+import { buildFootprints, searchTypeCode } from "@/lib/footprints";
 import {
   runSearch,
   providerForMode,
@@ -18,6 +19,7 @@ import {
   clientId,
   safeErrorMessage,
 } from "@/lib/security";
+import { saveSearch } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -80,11 +82,34 @@ export async function POST(req: NextRequest) {
       requireEmail,
     });
 
+    const searchType = searchTypeCode(platform);
+
     // --- API mode with no key configured -> DEMO data ---
     if (mode === "api" && apiProvider() === "none") {
       const { demoLeads } = await import("@/lib/demo-data");
       const leads = demoLeads(keyword, platform, country).slice(0, maxResults);
+
+      const searchId = randomUUID();
+      try {
+        saveSearch({
+          id: searchId,
+          platform,
+          keyword,
+          country,
+          geoLocation,
+          mode,
+          provider: "demo",
+          searchType,
+          status: "completed",
+          leads,
+          creditsUsed: 0, // demo data costs nothing
+        });
+      } catch (e) {
+        console.error("DB save (demo) failed:", e);
+      }
+
       return NextResponse.json({
+        searchId,
         provider: "demo",
         demo: true,
         mode,
@@ -124,6 +149,24 @@ export async function POST(req: NextRequest) {
 
     // If nothing came back and we hit an error, surface it (scrubbed).
     if (leads.length === 0 && firstError) {
+      try {
+        saveSearch({
+          id: randomUUID(),
+          platform,
+          keyword,
+          country,
+          geoLocation,
+          mode,
+          provider,
+          searchType,
+          status: "failed",
+          leads: [],
+          creditsUsed: 0,
+          error: firstError,
+        });
+      } catch (e) {
+        console.error("DB save (failed search) error:", e);
+      }
       return NextResponse.json({ error: firstError, provider, mode }, { status: 502 });
     }
 
@@ -151,7 +194,30 @@ export async function POST(req: NextRequest) {
       leads = await enrichLeads(leads, 5); // max 5 concurrent fetches
     }
 
+    // Credits model: 1 credit per result, +1 per validated email (rough estimate).
+    const creditsUsed = leads.length + (validateEmails ? leads.length : 0);
+
+    const searchId = randomUUID();
+    try {
+      saveSearch({
+        id: searchId,
+        platform,
+        keyword,
+        country,
+        geoLocation,
+        mode,
+        provider,
+        searchType,
+        status: "completed",
+        leads,
+        creditsUsed,
+      });
+    } catch (e) {
+      console.error("DB save (search) failed:", e);
+    }
+
     return NextResponse.json({
+      searchId,
       provider,
       mode,
       enriched: enrichResults,

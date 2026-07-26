@@ -16,6 +16,7 @@ import { DashboardSkeleton } from "@/components/ui/skeleton";
 import type { Lead } from "@/lib/extractors";
 
 export interface SearchState {
+  searchId?: string;
   leads: Lead[];
   queries: string[];
   provider: string;
@@ -56,7 +57,7 @@ export default function Home() {
       case "bulk-validation":
         return <EmailValidator mode={currentPage === "bulk-validation" ? "bulk" : "single"} />;
       case "search-history":
-        return <SearchHistory />;
+        return <SearchHistory onViewResults={(data) => setSearchResults(data)} />;
       case "exports":
         return <ExportsPage />;
       case "api":

@@ -122,6 +122,23 @@ export function platformLabel(platform: string): string {
   return "Web";
 }
 
+const SEARCH_TYPE_CODES: Record<string, string> = {
+  "instagram-keyword": "INSTAGRAM_WORD",
+  "instagram-hashtag": "INSTAGRAM_HASHTAG",
+  "twitter-keyword": "X_WORD",
+  "twitter-followers": "X_FOLLOWERS",
+  "twitter-following": "X_FOLLOWING",
+  "facebook-keyword": "FACEBOOK_WORD",
+  "linkedin-keyword": "LINKEDIN_WORD",
+  "youtube-keyword": "YOUTUBE_WORD",
+  "tiktok-keyword": "TIKTOK_WORD",
+  "multiple-channels": "MULTI_WORD",
+};
+
+export function searchTypeCode(platform: string): string {
+  return SEARCH_TYPE_CODES[platform] || "WEB_WORD";
+}
+
 export function platformFromUrl(url: string): string {
   if (url.includes("instagram.com")) return "Instagram";
   if (url.includes("twitter.com") || url.includes("x.com")) return "X (Twitter)";

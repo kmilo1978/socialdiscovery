@@ -317,7 +317,13 @@ async function searchSerpApi(query: string, start = 0, gl = ""): Promise<RawResu
   url.searchParams.set("engine", "google");
   url.searchParams.set("q", query);
   url.searchParams.set("num", "10");
-  url.searchParams.set("start", String(start));
+  // IMPORTANT: only send `start` for page > 0. Sending `start=0` explicitly
+  // (even though it's the default) makes SerpAPI/Google return unrelated
+  // generic results instead of honoring the site:/quoted-OR footprint query.
+  // Confirmed via direct testing — omitting it for the first page fixes it.
+  if (start > 0) {
+    url.searchParams.set("start", String(start));
+  }
   url.searchParams.set("api_key", key);
   if (gl) {
     url.searchParams.set("gl", gl);

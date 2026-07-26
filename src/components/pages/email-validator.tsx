@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Mail,
   CheckCircle,
@@ -16,7 +16,10 @@ import {
   TrendingUp,
   Upload,
   FileSpreadsheet,
+  Loader2,
+  Download,
 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 
 interface EmailValidatorProps {
   mode?: "single" | "bulk";
@@ -36,66 +39,50 @@ interface ValidationResult {
   date: string;
 }
 
-const mockHistory: ValidationResult[] = [
-  {
-    email: "john@google.com",
-    status: "accepted",
-    syntax: true,
-    domain: true,
-    mx: true,
-    disposable: false,
-    role: false,
-    catchAll: false,
-    provider: "Google Workspace",
-    confidence: 99,
-    date: "Oct 24, 2:40 PM",
-  },
-  {
-    email: "test@tempmail.org",
-    status: "rejected",
-    syntax: true,
-    domain: true,
-    mx: true,
-    disposable: true,
-    role: false,
-    catchAll: true,
-    provider: "TempMail",
-    confidence: 5,
-    date: "Oct 24, 2:38 PM",
-  },
-  {
-    email: "info@company.co",
-    status: "limited",
-    syntax: true,
-    domain: true,
-    mx: true,
-    disposable: false,
-    role: true,
-    catchAll: false,
-    provider: "Microsoft 365",
-    confidence: 65,
-    date: "Oct 24, 2:35 PM",
-  },
-  {
-    email: "sarah@startup.io",
-    status: "accepted",
-    syntax: true,
-    domain: true,
-    mx: true,
-    disposable: false,
-    role: false,
-    catchAll: false,
-    provider: "Google Workspace",
-    confidence: 97,
-    date: "Oct 24, 2:30 PM",
-  },
-];
+function formatDate(iso?: string): string {
+  if (!iso) return "Just now";
+  try {
+    const d = new Date(iso.replace(" ", "T") + "Z");
+    return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  } catch {
+    return iso;
+  }
+}
 
 export function EmailValidator({ mode = "single" }: EmailValidatorProps) {
+  const { addToast } = useToast();
   const [email, setEmail] = useState("");
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [history, setHistory] = useState<ValidationResult[]>(mockHistory);
+  const [history, setHistory] = useState<ValidationResult[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [bulkResults, setBulkResults] = useState<ValidationResult[]>([]);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [bulkFileName, setBulkFileName] = useState("");
+
+  const loadHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch("/api/history?type=validations&limit=20");
+      const data = await res.json();
+      const rows: ValidationResult[] = (data.validations || []).map(
+        (v: ValidationResult & { createdAt?: string }) => ({
+          ...v,
+          date: formatDate(v.createdAt),
+        })
+      );
+      setHistory(rows);
+    } catch {
+      setHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const handleValidate = async () => {
     if (!email) return;
@@ -126,11 +113,89 @@ export function EmailValidator({ mode = "single" }: EmailValidatorProps) {
       };
       setResult(validated);
       setHistory((prev) => [validated, ...prev].slice(0, 20));
-    } catch {
-      // network error - ignore, could add toast
+    } catch (err) {
+      addToast({
+        type: "error",
+        title: "Validation failed",
+        description: err instanceof Error ? err.message : "Network error",
+      });
     } finally {
       setIsValidating(false);
     }
+  };
+
+  // --- Bulk CSV validation ---
+  const parseEmailsFromCsv = (text: string): string[] => {
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    const matches = text.match(emailRegex) || [];
+    return Array.from(new Set(matches.map((m) => m.toLowerCase())));
+  };
+
+  const runBulkValidation = async (file: File) => {
+    setBulkFileName(file.name);
+    setBulkProcessing(true);
+    setBulkResults([]);
+    try {
+      const text = await file.text();
+      const emails = parseEmailsFromCsv(text);
+      if (emails.length === 0) {
+        addToast({ type: "warning", title: "No emails found in file" });
+        setBulkProcessing(false);
+        return;
+      }
+      addToast({ type: "info", title: `Validating ${emails.length} emails...` });
+
+      const res = await fetch("/api/validate-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        addToast({ type: "error", title: "Bulk validation failed", description: data.error });
+        setBulkProcessing(false);
+        return;
+      }
+      const rows: ValidationResult[] = (data.results || []).map((r: ValidationResult) => ({
+        ...r,
+        date: "Just now",
+      }));
+      setBulkResults(rows);
+      addToast({ type: "success", title: `Validated ${rows.length} emails` });
+      loadHistory();
+    } catch (err) {
+      addToast({ type: "error", title: "Failed to read file", description: err instanceof Error ? err.message : "" });
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) runBulkValidation(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) runBulkValidation(file);
+  };
+
+  const exportBulkCsv = () => {
+    if (bulkResults.length === 0) return;
+    const headers = ["Email", "Status", "Provider", "Confidence", "Disposable", "Role"];
+    const rows = bulkResults.map((r) =>
+      [r.email, r.status, r.provider, r.confidence, r.disposable, r.role].map((v) => `"${v}"`).join(",")
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `validated_${bulkFileName || "emails"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const getStatusBadge = (status: string) => {
@@ -175,21 +240,87 @@ export function EmailValidator({ mode = "single" }: EmailValidatorProps) {
 
       {mode === "bulk" ? (
         /* Bulk Upload */
-        <div className="bg-card rounded-xl border border-border p-8">
-          <div className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/50 transition-colors cursor-pointer">
-            <Upload size={40} className="mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-sm font-medium text-foreground mb-1">
-              Drag & Drop your CSV file here
-            </h3>
-            <p className="text-xs text-muted-foreground mb-4">
-              or click to browse. Max 50,000 emails per file.
-            </p>
-            <button className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors">
-              <FileSpreadsheet size={14} className="inline mr-2" />
-              Select CSV File
-            </button>
+        <>
+          <div className="bg-card rounded-xl border border-border p-8">
+            <label
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              className={`block border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer ${
+                isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+              }`}
+            >
+              <input type="file" accept=".csv,.txt" className="hidden" onChange={handleFileSelect} />
+              {bulkProcessing ? (
+                <>
+                  <Loader2 size={40} className="mx-auto text-primary mb-4 animate-spin" />
+                  <h3 className="text-sm font-medium text-foreground mb-1">Validating emails...</h3>
+                  <p className="text-xs text-muted-foreground">This runs real DNS/MX checks, please wait.</p>
+                </>
+              ) : (
+                <>
+                  <Upload size={40} className="mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-sm font-medium text-foreground mb-1">
+                    Drag & Drop your CSV file here
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    or click to browse. Any emails found in the file will be extracted and validated (max 500).
+                  </p>
+                  <span className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors">
+                    <FileSpreadsheet size={14} className="mr-2" />
+                    Select CSV File
+                  </span>
+                </>
+              )}
+            </label>
           </div>
-        </div>
+
+          {bulkResults.length > 0 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Bulk Results</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {bulkResults.length} emails validated from {bulkFileName}
+                  </p>
+                </div>
+                <button
+                  onClick={exportBulkCsv}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+                >
+                  <Download size={14} />
+                  Export CSV
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-border max-h-[400px] overflow-y-auto">
+                <table className="w-full">
+                  <thead className="sticky top-0">
+                    <tr className="border-b border-border bg-secondary/30">
+                      <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Provider</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Confidence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bulkResults.map((item, i) => (
+                      <tr key={i} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
+                        <td className="px-4 py-3 text-sm text-foreground font-medium">{item.email}</td>
+                        <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{item.provider}</td>
+                        <td className="px-4 py-3">
+                          <span className={`text-sm font-bold ${item.confidence >= 80 ? "text-success" : item.confidence >= 50 ? "text-warning" : "text-destructive"}`}>
+                            {item.confidence}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       ) : (
         /* Single Validation */
         <>
@@ -301,34 +432,44 @@ export function EmailValidator({ mode = "single" }: EmailValidatorProps) {
       {/* Validation History */}
       <div className="bg-card rounded-xl border border-border p-5">
         <h3 className="text-sm font-semibold text-foreground mb-4">Validation History</h3>
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-secondary/30">
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Provider</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Confidence</th>
-                <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((item, i) => (
-                <tr key={i} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
-                  <td className="px-4 py-3 text-sm text-foreground font-medium">{item.email}</td>
-                  <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{item.provider}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-sm font-bold ${item.confidence >= 80 ? "text-success" : item.confidence >= 50 ? "text-warning" : "text-destructive"}`}>
-                      {item.confidence}%
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{item.date}</td>
+        {loadingHistory ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Loading history...</div>
+        ) : history.length === 0 ? (
+          <div className="py-8 text-center">
+            <Inbox size={28} className="mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-foreground font-medium">No validations yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Validated emails will appear here.</p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-border">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-secondary/30">
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Provider</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Confidence</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {history.map((item, i) => (
+                  <tr key={i} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3 text-sm text-foreground font-medium">{item.email}</td>
+                    <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.provider}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-sm font-bold ${item.confidence >= 80 ? "text-success" : item.confidence >= 50 ? "text-warning" : "text-destructive"}`}>
+                        {item.confidence}%
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{item.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
