@@ -94,8 +94,36 @@ The `data/` folder is gitignored — each environment keeps its own local databa
 | Dashboard stats / charts | **Real** (computed from the DB) |
 | Search History (reopen past results) | **Real** (from the DB) |
 | API Access usage / upgrade path | **Real** (real usage count + link to SerpAPI billing) |
+| MCP Server (AI tool integration) | **Real** (JSON-RPC/stdio, Kiro + Claude Desktop) |
+| i18n (English, Español, Português) | **Real** (localStorage persisted, selector in Settings) |
 | CSV export of results | **Real** |
 | Exports page | Demo data |
+
+## MCP Server (AI integration)
+
+The project includes a standalone MCP (Model Context Protocol) server that exposes two tools for AI assistants:
+
+- `discover` — run a full discovery search (platform, keyword, country, geolocation, mode, etc.)
+- `validate_email` — validate any email with real DNS/MX checks
+
+**Usage with Kiro:** already configured at `.kiro/settings/mcp.json` — tools appear automatically.
+
+**Usage with Claude Desktop:** copy `mcp-config.json` to your Claude Desktop config, or run manually:
+```bash
+node --experimental-strip-types mcp-server.mjs
+```
+
+## Multi-language (i18n)
+
+The interface supports three languages, selectable from **Settings → Language**:
+
+| Language | Code |
+|---|---|
+| 🇺🇸 English | `en` |
+| 🇪🇸 Español | `es` |
+| 🇧🇷 Português | `pt` |
+
+The choice is persisted in `localStorage`. To add a new language: create `src/lib/i18n/<code>.ts`, add it to `LOCALES` + `TRANSLATIONS` in `src/lib/i18n/index.ts`.
 
 ## Legal & ethical use
 
