@@ -82,8 +82,8 @@ const countries = [
 export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
   const { addToast } = useToast();
   const [keyword, setKeyword] = useState("");
-  const [country, setCountry] = useState("All Countries");
-  const [geoLocation, setGeoLocation] = useState(""); // gl code (empty = global)
+  const [country, setCountry] = useState("Colombia");
+  const [geoLocation, setGeoLocation] = useState("co"); // gl code (empty = global)
   const [mode, setMode] = useState<Mode>("api");
   const [maxResults, setMaxResults] = useState(50);
   const [b2b, setB2b] = useState(true);
