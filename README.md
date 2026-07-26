@@ -44,12 +44,31 @@ npm run dev
 ```
 Open http://localhost:3000
 
+## Search modes
+
+The discovery form lets you pick how the footprint query runs:
+
+| Mode | Provider | API key | Speed | Max results |
+|---|---|---|---|---|
+| **Basic (Footprints)** | DuckDuckGo HTML | Not needed | Slower (throttled ~2.5s/req) | 30 |
+| **API (Google / SerpAPI)** | Google CSE / SerpAPI | Required | Fast | 100 |
+
+Basic mode scrapes a public search engine and is throttled to avoid anti-bot blocks; if the engine rate-limits you, wait a moment or switch to API mode. API mode is faster and returns more results but consumes your quota (demo data is returned if no key is set).
+
+## Security
+
+- **Anti-injection:** the keyword is sanitized before being embedded in a search query — control characters, quotes, and injected operators (`site:`, `inurl:`, …) are stripped. Platform is whitelisted; numbers/booleans are coerced and clamped.
+- **API key protection:** keys live server-side only and are never sent to the client. Provider errors never include the request URL (which would carry the key), and all outgoing messages are run through a secret scrubber (`redacts AIza…` keys, `key`/`api_key`/`cx` params, and any configured env value).
+- **Rate limiting:** in-memory per-client limits (discovery 20/min, validation 60/min) return HTTP 429 with `Retry-After`.
+- **Security headers:** `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`, plus `no-store` on all API routes.
+
 ## What is real vs. simulated
 
 | Feature | Status |
 |---|---|
 | Email validation (syntax + MX + disposable/role) | **Real** (uses Node DNS) |
-| Discovery via Google footprints | **Real** (needs API key) |
+| Discovery — Basic mode (footprints) | **Real** (no key, throttled, max 30) |
+| Discovery — API mode | **Real** (needs API key, max 100) |
 | CSV export of results | **Real** |
 | Dashboard stats / charts | Demo data |
 | Search history / Exports pages | Demo data |

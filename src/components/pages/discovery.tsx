@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Zap, Clock, Target, Info, AlertTriangle, Loader2 } from "lucide-react";
+import { Search, Zap, Clock, Target, Info, AlertTriangle, Loader2, Globe, KeyRound } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import type { SearchState } from "@/app/page";
 
@@ -9,6 +9,14 @@ interface DiscoveryPageProps {
   platform: string;
   onResults: (data: SearchState) => void;
 }
+
+type Mode = "basic" | "api";
+
+// Mirror of server-side MODE_LIMITS (search-providers.ts). Keep in sync.
+const MODE_LIMITS: Record<Mode, { maxResults: number; approxTime: string; label: string }> = {
+  basic: { maxResults: 30, approxTime: "~30-60s", label: "Basic (Footprints)" },
+  api: { maxResults: 100, approxTime: "~10-20s", label: "API (Google / SerpAPI)" },
+};
 
 const searchTypeCodes: Record<string, string> = {
   "instagram-keyword": "INSTAGRAM_WORD",
@@ -74,17 +82,24 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
   const { addToast } = useToast();
   const [keyword, setKeyword] = useState("");
   const [country, setCountry] = useState("All Countries");
-  const [maxResults, setMaxResults] = useState(50);
+  const [mode, setMode] = useState<Mode>("basic");
+  const [maxResults, setMaxResults] = useState(30);
   const [b2b, setB2b] = useState(true);
   const [includeSynonyms, setIncludeSynonyms] = useState(true);
   const [exactMatch, setExactMatch] = useState(false);
   const [avoidDuplicates, setAvoidDuplicates] = useState(true);
   const [validateEmails, setValidateEmails] = useState(true);
   const [requireEmail, setRequireEmail] = useState(true);
-  const [scanMode, setScanMode] = useState<"fast" | "normal" | "deep">("normal");
   const [isSearching, setIsSearching] = useState(false);
 
   const title = platformLabels[platform] || "Discovery Search";
+  const cap = MODE_LIMITS[mode].maxResults;
+
+  // When switching mode, clamp the requested results to the new cap.
+  const changeMode = (m: Mode) => {
+    setMode(m);
+    setMaxResults((prev) => Math.min(prev, MODE_LIMITS[m].maxResults));
+  };
 
   const handleSearch = async () => {
     if (!keyword || keyword.trim().length < 2) {
@@ -92,8 +107,16 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
       return;
     }
 
+    const clamped = Math.min(Math.max(maxResults, 10), cap);
     setIsSearching(true);
-    addToast({ type: "info", title: "Search started", description: "Querying Google footprints..." });
+    addToast({
+      type: "info",
+      title: "Search started",
+      description:
+        mode === "basic"
+          ? "Basic mode is throttled to avoid blocks — this can take up to a minute."
+          : "Querying via API...",
+    });
 
     try {
       const res = await fetch("/api/discover", {
@@ -103,7 +126,8 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
           platform,
           keyword,
           country,
-          maxResults,
+          mode,
+          maxResults: clamped,
           exactMatch,
           includeSynonyms,
           avoidDuplicates,
@@ -117,17 +141,24 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
       if (!res.ok) {
         addToast({
           type: "error",
-          title: "Search failed",
+          title: res.status === 429 ? "Rate limit" : "Search failed",
           description: data.error || "Unknown error",
         });
         setIsSearching(false);
         return;
       }
 
+      const providerName =
+        data.provider === "google_cse"
+          ? "Google Custom Search"
+          : data.provider === "duckduckgo"
+          ? "DuckDuckGo (Basic)"
+          : data.provider;
+
       addToast({
         type: "success",
-        title: `${data.total} profiles found`,
-        description: `via ${data.provider === "google_cse" ? "Google Custom Search" : data.provider}`,
+        title: `${data.total} results found`,
+        description: `via ${providerName}`,
       });
 
       onResults({
@@ -164,6 +195,49 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
 
       {/* Search Form */}
       <div className="bg-card rounded-xl border border-border p-6 space-y-5">
+        {/* Search Method (Basic vs API) */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Search Method</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => changeMode("basic")}
+              className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
+                mode === "basic"
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/30"
+              }`}
+            >
+              <Globe size={18} className={mode === "basic" ? "text-primary mt-0.5" : "text-muted-foreground mt-0.5"} />
+              <div>
+                <div className={`text-sm font-medium ${mode === "basic" ? "text-primary" : "text-foreground"}`}>
+                  Basic (Footprints)
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  No API key · slower (throttled) · max 30 results
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => changeMode("api")}
+              className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
+                mode === "api"
+                  ? "border-primary bg-primary/10"
+                  : "border-border hover:border-primary/30"
+              }`}
+            >
+              <KeyRound size={18} className={mode === "api" ? "text-primary mt-0.5" : "text-muted-foreground mt-0.5"} />
+              <div>
+                <div className={`text-sm font-medium ${mode === "api" ? "text-primary" : "text-foreground"}`}>
+                  API (Google / SerpAPI)
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">
+                  Needs API key · faster · max 100 results
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Keyword */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Keyword</label>
@@ -197,13 +271,16 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Maximum Results</label>
+            <label className="text-sm font-medium text-foreground flex items-center justify-between">
+              <span>Maximum Results</span>
+              <span className="text-[11px] text-muted-foreground font-normal">max {cap}</span>
+            </label>
             <input
               type="number"
               value={maxResults}
-              onChange={(e) => setMaxResults(Number(e.target.value))}
+              onChange={(e) => setMaxResults(Math.min(Number(e.target.value), cap))}
               min={10}
-              max={100}
+              max={cap}
               className="w-full h-10 px-3 bg-background rounded-lg border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
             />
           </div>
@@ -256,34 +333,6 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
           ))}
         </div>
 
-        {/* Scan Mode */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Scan Mode</label>
-          <div className="grid grid-cols-3 gap-3">
-            {(["fast", "normal", "deep"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setScanMode(mode)}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all ${
-                  scanMode === mode
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                }`}
-              >
-                {mode === "fast" && <Zap size={18} />}
-                {mode === "normal" && <Clock size={18} />}
-                {mode === "deep" && <Target size={18} />}
-                <span className="text-sm font-medium capitalize">{mode}</span>
-                <span className="text-[11px] text-muted-foreground">
-                  {mode === "fast" && "1 page"}
-                  {mode === "normal" && "up to 50"}
-                  {mode === "deep" && "up to 100"}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Start Search Button */}
         <button
           onClick={handleSearch}
@@ -308,29 +357,40 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-card rounded-xl border border-border p-4 text-center">
           <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Estimated Results</div>
-          <div className="text-lg font-bold text-foreground">~{maxResults}</div>
+          <div className="text-lg font-bold text-foreground">~{Math.min(maxResults, cap)}</div>
         </div>
         <div className="bg-card rounded-xl border border-border p-4 text-center">
-          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Search Queries</div>
-          <div className="text-lg font-bold text-foreground">{Math.ceil(maxResults / 10)}</div>
+          <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Method</div>
+          <div className="text-lg font-bold text-foreground">{mode === "basic" ? "Basic" : "API"}</div>
         </div>
         <div className="bg-card rounded-xl border border-border p-4 text-center">
           <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Estimated Time</div>
-          <div className="text-lg font-bold text-foreground">
-            {scanMode === "fast" ? "~5s" : scanMode === "normal" ? "~15s" : "~30s"}
-          </div>
+          <div className="text-lg font-bold text-foreground">{MODE_LIMITS[mode].approxTime}</div>
         </div>
       </div>
 
-      {/* Info */}
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
-        <Info size={16} className="text-primary shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          This tool only searches publicly indexed pages via the Google Custom Search API. Configure your
-          API key in <code className="text-primary">.env.local</code> (see README). Results depend on what
-          Google has indexed for your footprint query.
-        </p>
-      </div>
+      {/* Mode-specific info */}
+      {mode === "basic" ? (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+          <Globe size={16} className="text-primary shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <span className="text-primary font-medium">Basic mode</span> scrapes a public search engine with
+            your footprint query — no API key needed. To avoid being blocked it is throttled (a few seconds
+            between requests) and capped at <span className="text-foreground font-medium">30 results</span>.
+            Best for quick, low-volume searches.
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+          <KeyRound size={16} className="text-primary shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <span className="text-primary font-medium">API mode</span> uses the Google Custom Search API (or
+            SerpAPI) — faster and up to <span className="text-foreground font-medium">100 results</span>, but
+            it consumes your quota. Add your key in <code className="text-primary">.env.local</code> (see
+            README). Without a key, API mode returns demo data.
+          </p>
+        </div>
+      )}
 
       {/* Legal note */}
       <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/5 border border-warning/20">

@@ -1,36 +1,74 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildFootprints } from "@/lib/footprints";
-import { runSearch, activeProvider } from "@/lib/search-providers";
+import {
+  runSearch,
+  providerForMode,
+  apiProvider,
+  MODE_LIMITS,
+  type SearchMode,
+} from "@/lib/search-providers";
 import { extractLeads } from "@/lib/extractors";
+import {
+  sanitizeKeyword,
+  sanitizeLabel,
+  sanitizePlatform,
+  clampNumber,
+  toBool,
+  rateLimit,
+  clientId,
+  safeErrorMessage,
+} from "@/lib/security";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const {
-      platform = "linkedin-keyword",
-      keyword = "",
-      country = "All Countries",
-      maxResults = 50,
-      exactMatch = false,
-      includeSynonyms = false,
-      avoidDuplicates = true,
-      validateEmails = false,
-      requireEmail = true,
-    } = body;
+// Rate limit: max 20 discovery searches per minute per client.
+const RL_LIMIT = 20;
+const RL_WINDOW = 60_000;
 
-    if (!keyword || keyword.trim().length < 2) {
+export async function POST(req: NextRequest) {
+  // --- Rate limiting (anti-abuse) ---
+  const rl = rateLimit(`discover:${clientId(req)}`, RL_LIMIT, RL_WINDOW);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Try again in ${rl.retryAfterSec}s.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+    );
+  }
+
+  try {
+    // --- Parse + validate body defensively ---
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+    }
+
+    const platform = sanitizePlatform(body.platform);
+    const keyword = sanitizeKeyword(body.keyword);
+    const country = sanitizeLabel(body.country) || "All Countries";
+    const mode: SearchMode = body.mode === "basic" ? "basic" : "api";
+    const exactMatch = toBool(body.exactMatch);
+    const includeSynonyms = toBool(body.includeSynonyms);
+    const avoidDuplicates = toBool(body.avoidDuplicates, true);
+    const validateEmails = toBool(body.validateEmails);
+    const requireEmail = toBool(body.requireEmail, true);
+
+    // Clamp maxResults to the selected mode's ceiling (anti-abuse / cost control).
+    const modeCap = MODE_LIMITS[mode].maxResults;
+    const maxResults = clampNumber(body.maxResults, 10, modeCap, Math.min(30, modeCap));
+
+    if (!keyword || keyword.length < 2) {
       return NextResponse.json(
-        { error: "Keyword is required (min 2 characters)." },
+        { error: "Keyword is required (min 2 valid characters)." },
         { status: 400 }
       );
     }
 
-    const provider = activeProvider();
+    const provider = providerForMode(mode);
 
-    // Build footprint queries
+    // Build footprint queries (keyword already sanitized).
     const footprints = buildFootprints({
       platform,
       keyword,
@@ -40,14 +78,15 @@ export async function POST(req: NextRequest) {
       requireEmail,
     });
 
-    if (provider === "none") {
-      // No API key configured -> return DEMO data so the UI is testable.
+    // --- API mode with no key configured -> DEMO data ---
+    if (mode === "api" && apiProvider() === "none") {
       const { demoLeads } = await import("@/lib/demo-data");
       const leads = demoLeads(keyword, platform, country).slice(0, maxResults);
       return NextResponse.json({
         provider: "demo",
         demo: true,
-        note: "Demo data. Add GOOGLE_CSE_KEY + GOOGLE_CSE_CX (or SERPAPI_KEY) to .env.local for real Google footprint results. See README.",
+        mode,
+        note: "Demo data. Add GOOGLE_CSE_KEY + GOOGLE_CSE_CX (or SERPAPI_KEY) to .env.local for real API results, or switch to Basic mode.",
         queries: footprints.map((f) => f.query),
         total: leads.length,
         rawCount: leads.length,
@@ -55,23 +94,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // How many result pages to fetch (each page ~= 10 results)
-    const pagesNeeded = Math.min(Math.ceil(maxResults / 10), 5);
+    // Pages per query (basic mode = 1 page only).
+    const pagesNeeded = mode === "basic" ? 1 : Math.min(Math.ceil(maxResults / 10), 5);
 
     const rawAll = [];
     const usedQueries: string[] = [];
+    let firstError: string | null = null;
 
-    // Spread requested pages across footprint queries
     for (const fp of footprints) {
       usedQueries.push(fp.query);
       for (let page = 0; page < pagesNeeded; page++) {
         try {
-          const results = await runSearch(fp.query, page);
+          const results = await runSearch(fp.query, page, mode);
           rawAll.push(...results);
-          if (results.length < 10) break; // no more pages
+          if (results.length < 10) break;
         } catch (err) {
-          // Continue with whatever we have; surface first error only
-          console.error("Search error:", err);
+          if (!firstError) firstError = safeErrorMessage(err, "Search provider error");
           break;
         }
         if (rawAll.length >= maxResults) break;
@@ -82,7 +120,12 @@ export async function POST(req: NextRequest) {
     let leads = extractLeads(rawAll, country, { avoidDuplicates });
     leads = leads.slice(0, maxResults);
 
-    // Optionally validate emails inline (real MX check)
+    // If nothing came back and we hit an error, surface it (scrubbed).
+    if (leads.length === 0 && firstError) {
+      return NextResponse.json({ error: firstError, provider, mode }, { status: 502 });
+    }
+
+    // Optional inline email validation (real MX check).
     if (validateEmails) {
       const { validateEmail } = await import("@/lib/email-validator");
       await Promise.all(
@@ -102,16 +145,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       provider,
+      mode,
       queries: usedQueries,
       total: leads.length,
       rawCount: rawAll.length,
       leads,
     });
   } catch (err) {
-    console.error(err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: safeErrorMessage(err) }, { status: 500 });
   }
 }
