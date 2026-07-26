@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #0a0b14;
+  --color-foreground: #e4e4e7;
+  --color-card: #12131f;
+  --color-card-foreground: #e4e4e7;
+  --color-popover: #12131f;
+  --color-popover-foreground: #e4e4e7;
+  --color-primary: #4F7CFF;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1e1f2e;
+  --color-secondary-foreground: #a1a1aa;
+  --color-muted: #1a1b2e;
+  --color-muted-foreground: #71717a;
+  --color-accent: #4F7CFF;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #ef4444;
+  --color-border: #1e2035;
+  --color-input: #1e2035;
+  --color-ring: #4F7CFF;
+  --color-sidebar: #0d0e1a;
+  --color-sidebar-foreground: #a1a1aa;
+  --color-sidebar-accent: #4F7CFF;
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2b3d;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3b4d;
+}
+
+/* Skeleton animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #1a1b2e 25%, #252640 50%, #1a1b2e 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Animations */
+@keyframes slide-in-from-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-in {
+  animation: slide-in-from-right 0.3s ease-out;
+}
+
+.slide-in-from-right-full {
+  animation-name: slide-in-from-right;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
