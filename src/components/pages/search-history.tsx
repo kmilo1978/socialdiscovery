@@ -45,8 +45,8 @@ export function SearchHistory({ onViewResults }: SearchHistoryProps) {
     setLoading(true);
     try {
       const res = await fetch("/api/history?limit=100");
-      const data = await res.json();
-      setRows(data.searches || []);
+      const data = await res.json().catch(() => null);
+      setRows(data?.searches || []);
     } catch {
       setRows([]);
     } finally {
@@ -68,7 +68,8 @@ export function SearchHistory({ onViewResults }: SearchHistoryProps) {
     setLoadingId(row.id);
     try {
       const res = await fetch(`/api/history?searchId=${encodeURIComponent(row.id)}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (!data) return;
       onViewResults({
         searchId: row.id,
         leads: data.leads || [],

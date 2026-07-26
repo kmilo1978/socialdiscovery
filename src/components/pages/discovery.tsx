@@ -141,7 +141,18 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
         }),
       });
 
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        addToast({
+          type: "error",
+          title: "Server error",
+          description: "The server returned an invalid response. Make sure you're running on localhost (Netlify doesn't support this app's backend).",
+        });
+        setIsSearching(false);
+        return;
+      }
 
       if (!res.ok) {
         addToast({

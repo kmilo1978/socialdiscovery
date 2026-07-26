@@ -65,7 +65,9 @@ export function EmailValidator({ mode = "single" }: EmailValidatorProps) {
     setLoadingHistory(true);
     try {
       const res = await fetch("/api/history?type=validations&limit=20");
-      const data = await res.json();
+      if (!res.ok) { setLoadingHistory(false); return; }
+      const data = await res.json().catch(() => null);
+      if (!data) { setLoadingHistory(false); return; }
       const rows: ValidationResult[] = (data.validations || []).map(
         (v: ValidationResult & { createdAt?: string }) => ({
           ...v,
@@ -93,7 +95,12 @@ export function EmailValidator({ mode = "single" }: EmailValidatorProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        setIsValidating(false);
+        addToast({ type: "error", title: "Server error", description: "Invalid response. Run on localhost, not Netlify." });
+        return;
+      }
       if (!res.ok) {
         setIsValidating(false);
         return;
@@ -150,9 +157,9 @@ export function EmailValidator({ mode = "single" }: EmailValidatorProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ emails }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        addToast({ type: "error", title: "Bulk validation failed", description: data.error });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        addToast({ type: "error", title: "Bulk validation failed", description: data?.error || "Server error" });
         setBulkProcessing(false);
         return;
       }

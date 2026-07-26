@@ -76,8 +76,9 @@ export function Dashboard() {
     setLoading(true);
     try {
       const res = await fetch("/api/stats");
-      const data = await res.json();
-      setStats(data);
+      if (!res.ok) { setLoading(false); return; }
+      const data = await res.json().catch(() => null);
+      if (data) setStats(data);
     } catch {
       setStats(null);
     } finally {
