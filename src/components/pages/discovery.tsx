@@ -16,7 +16,7 @@ type Mode = "basic" | "api";
 // Mirror of server-side MODE_LIMITS (search-providers.ts). Keep in sync.
 const MODE_LIMITS: Record<Mode, { maxResults: number; approxTime: string; label: string }> = {
   basic: { maxResults: 40, approxTime: "~30-60s", label: "Basic (Footprints)" },
-  api: { maxResults: 100, approxTime: "~10-20s", label: "API (SerpAPI)" },
+  api: { maxResults: 250, approxTime: "~10-30s", label: "API (SerpAPI)" },
 };
 
 const searchTypeCodes: Record<string, string> = {
@@ -84,8 +84,8 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
   const [keyword, setKeyword] = useState("");
   const [country, setCountry] = useState("All Countries");
   const [geoLocation, setGeoLocation] = useState(""); // gl code (empty = global)
-  const [mode, setMode] = useState<Mode>("basic");
-  const [maxResults, setMaxResults] = useState(30);
+  const [mode, setMode] = useState<Mode>("api");
+  const [maxResults, setMaxResults] = useState(50);
   const [b2b, setB2b] = useState(true);
   const [includeSynonyms, setIncludeSynonyms] = useState(true);
   const [exactMatch, setExactMatch] = useState(false);
@@ -248,7 +248,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
                   API (SerpAPI)
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
-                  Needs API key · faster · max 100 results
+                  Needs API key · faster · max 250 results
                 </div>
               </div>
             </button>
@@ -425,7 +425,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
           <KeyRound size={16} className="text-primary shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground leading-relaxed">
             <span className="text-primary font-medium">API mode</span> uses SerpAPI — faster and up to{" "}
-            <span className="text-foreground font-medium">100 results</span>, but it consumes your quota. Add
+            <span className="text-foreground font-medium">250 results</span>, but it consumes your quota. Add
             your key as <code className="text-primary">SERPAPI_KEY</code> in{" "}
             <code className="text-primary">.env.local</code> (see README, or the API Access page to check
             usage and upgrade). Without a key, API mode returns demo data.

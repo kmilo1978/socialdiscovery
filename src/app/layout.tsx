@@ -51,6 +51,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        {/* Remove attributes injected by browser extensions (Bitdefender, etc.) before React hydrates */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              document.querySelectorAll('[bis_skin_checked]').forEach(el => el.removeAttribute('bis_skin_checked'));
+            `,
+          }}
+        />
+      </head>
       <body className="antialiased" suppressHydrationWarning>
         {children}
       </body>

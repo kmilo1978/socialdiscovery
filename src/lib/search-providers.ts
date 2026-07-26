@@ -23,7 +23,7 @@ export type ProviderName = "serpapi" | "duckduckgo" | "bing" | "basic_multi" | "
 // Per-mode limits (max results the UI/route will honor + throttle delay).
 export const MODE_LIMITS: Record<SearchMode, { maxResults: number; delayMs: number; label: string }> = {
   basic: { maxResults: 40, delayMs: 2000, label: "Basic (Footprints)" },
-  api: { maxResults: 100, delayMs: 0, label: "API (SerpAPI)" },
+  api: { maxResults: 250, delayMs: 0, label: "API (SerpAPI)" },
 };
 
 /** Which API provider is configured (for "api" mode). */
