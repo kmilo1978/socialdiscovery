@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     const keyword = sanitizeKeyword(body.keyword);
     const country = sanitizeLabel(body.country) || "All Countries";
     const mode: SearchMode = body.mode === "basic" ? "basic" : "api";
+    const geoLocation = sanitizeLabel(body.geoLocation, 10) || "";
     const exactMatch = toBool(body.exactMatch);
     const includeSynonyms = toBool(body.includeSynonyms);
     const avoidDuplicates = toBool(body.avoidDuplicates, true);
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
       usedQueries.push(fp.query);
       for (let page = 0; page < pagesNeeded; page++) {
         try {
-          const results = await runSearch(fp.query, page, mode);
+          const results = await runSearch(fp.query, page, mode, geoLocation);
           rawAll.push(...results);
           if (results.length < 10) break;
         } catch (err) {

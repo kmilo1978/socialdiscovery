@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#0a0b14"/>
+  <rect x="80" y="80" width="60" height="60" rx="14" fill="#4F7CFF"/>
+  <circle cx="104" cy="104" r="12" stroke="white" stroke-width="3" fill="none"/>
+  <line x1="113" y1="113" x2="124" y2="124" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <text x="160" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="700" fill="white">Social Discovery Engine</text>
+  <text x="80" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="800" fill="white">Find Social Profiles</text>
+  <text x="80" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="800" fill="#4F7CFF">at Scale</text>
+  <text x="80" y="460" font-family="system-ui, -apple-system, sans-serif" font-size="22" fill="#71717a">Google footprints · Email validation · Multi-platform discovery</text>
+  <rect x="80" y="520" width="160" height="44" rx="10" fill="#4F7CFF"/>
+  <text x="112" y="548" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="600" fill="white">Start Free →</text>
+</svg>

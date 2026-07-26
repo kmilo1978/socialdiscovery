@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Zap, Clock, Target, Info, AlertTriangle, Loader2, Globe, KeyRound } from "lucide-react";
+import { Search, Zap, Clock, Target, Info, AlertTriangle, Loader2, Globe, KeyRound, MapPin } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import type { SearchState } from "@/app/page";
+import { GEOLOCATIONS } from "@/lib/geolocations";
 
 interface DiscoveryPageProps {
   platform: string;
@@ -82,6 +83,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
   const { addToast } = useToast();
   const [keyword, setKeyword] = useState("");
   const [country, setCountry] = useState("All Countries");
+  const [geoLocation, setGeoLocation] = useState(""); // gl code (empty = global)
   const [mode, setMode] = useState<Mode>("basic");
   const [maxResults, setMaxResults] = useState(30);
   const [b2b, setB2b] = useState(true);
@@ -127,6 +129,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
           keyword,
           country,
           mode,
+          geoLocation,
           maxResults: clamped,
           exactMatch,
           includeSynonyms,
@@ -284,6 +287,28 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
               className="w-full h-10 px-3 bg-background rounded-lg border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
             />
           </div>
+        </div>
+
+        {/* Search Geolocation */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+            <MapPin size={14} className="text-primary" />
+            Search Geolocation
+          </label>
+          <select
+            value={geoLocation}
+            onChange={(e) => setGeoLocation(e.target.value)}
+            className="w-full h-10 px-3 bg-background rounded-lg border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all appearance-none"
+          >
+            {GEOLOCATIONS.map((g) => (
+              <option key={g.gl || "__global"} value={g.gl}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-muted-foreground">
+            Simulates searching from this region (e.g. Google US, Google Colombia). Affects which results are prioritized.
+          </p>
         </div>
 
         {/* Toggle B2B / B2C */}

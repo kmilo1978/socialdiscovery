@@ -186,9 +186,8 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       {/* Logo */}
       <div className="px-4 py-5 border-b border-border">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Search size={16} className="text-white" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="Social Discovery Engine" width={32} height={32} className="rounded-lg" />
           <div>
             <h1 className="text-sm font-semibold text-foreground">Social</h1>
             <p className="text-[11px] text-muted-foreground -mt-0.5">Discovery Engine</p>

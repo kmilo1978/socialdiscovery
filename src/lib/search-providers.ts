@@ -103,7 +103,7 @@ function parseDdgHtml(html: string): RawResult[] {
   return results;
 }
 
-async function fetchDdg(endpoint: string, query: string): Promise<{ status: number; html: string }> {
+async function fetchDdg(endpoint: string, query: string, kl = "wt-wt"): Promise<{ status: number; html: string }> {
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -113,21 +113,28 @@ async function fetchDdg(endpoint: string, query: string): Promise<{ status: numb
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
       "Accept-Language": "en-US,en;q=0.9",
     },
-    body: new URLSearchParams({ q: query, kl: "wt-wt" }).toString(),
+    body: new URLSearchParams({ q: query, kl }).toString(),
   });
   return { status: res.status, html: await res.text() };
 }
 
-async function searchDuckDuckGo(query: string): Promise<RawResult[]> {
+async function searchDuckDuckGo(query: string, gl = ""): Promise<RawResult[]> {
   const endpoints = ["https://html.duckduckgo.com/html/", "https://lite.duckduckgo.com/lite/"];
   let lastStatus = 0;
+
+  // Map gl code to DDG kl (region) code.
+  let kl = "wt-wt"; // global default
+  if (gl) {
+    const { getGeoByGl } = await import("./geolocations");
+    kl = getGeoByGl(gl).kl;
+  }
 
   // Try each endpoint; retry once on a soft-block (202/429) after a longer wait.
   for (const endpoint of endpoints) {
     for (let attempt = 0; attempt < 2; attempt++) {
       let r: { status: number; html: string };
       try {
-        r = await fetchDdg(endpoint, query);
+        r = await fetchDdg(endpoint, query, kl);
       } catch (err) {
         throw new Error(
           scrubSecrets(`DuckDuckGo request failed: ${err instanceof Error ? err.message : "network error"}`)
@@ -164,7 +171,7 @@ async function searchDuckDuckGo(query: string): Promise<RawResult[]> {
 // API MODE — Google Custom Search JSON API
 // ---------------------------------------------------------------------------
 
-async function searchGoogleCSE(query: string, start = 1): Promise<RawResult[]> {
+async function searchGoogleCSE(query: string, start = 1, gl = ""): Promise<RawResult[]> {
   const key = process.env.GOOGLE_CSE_KEY!;
   const cx = process.env.GOOGLE_CSE_CX!;
   const url = new URL("https://www.googleapis.com/customsearch/v1");
@@ -173,6 +180,10 @@ async function searchGoogleCSE(query: string, start = 1): Promise<RawResult[]> {
   url.searchParams.set("q", query);
   url.searchParams.set("num", "10");
   url.searchParams.set("start", String(start));
+  if (gl) {
+    url.searchParams.set("gl", gl); // Geolocation: country code
+    url.searchParams.set("cr", `country${gl.toUpperCase()}`); // Restrict results to country
+  }
 
   const res = await fetch(url.toString());
   if (!res.ok) {
@@ -188,7 +199,7 @@ async function searchGoogleCSE(query: string, start = 1): Promise<RawResult[]> {
 // API MODE — SerpAPI
 // ---------------------------------------------------------------------------
 
-async function searchSerpApi(query: string, start = 0): Promise<RawResult[]> {
+async function searchSerpApi(query: string, start = 0, gl = ""): Promise<RawResult[]> {
   const key = process.env.SERPAPI_KEY!;
   const url = new URL("https://serpapi.com/search.json");
   url.searchParams.set("engine", "google");
@@ -196,6 +207,10 @@ async function searchSerpApi(query: string, start = 0): Promise<RawResult[]> {
   url.searchParams.set("num", "10");
   url.searchParams.set("start", String(start));
   url.searchParams.set("api_key", key);
+  if (gl) {
+    url.searchParams.set("gl", gl); // Geolocation
+    url.searchParams.set("google_domain", `google.com`); // stays google.com but gl localizes results
+  }
 
   const res = await fetch(url.toString());
   if (!res.ok) {
@@ -212,23 +227,24 @@ async function searchSerpApi(query: string, start = 0): Promise<RawResult[]> {
 
 /**
  * Runs a single query in the requested mode. `page` is 0-indexed.
+ * `gl` is the Google geolocation code (ISO 3166-1 alpha-2, e.g. "us", "co").
  * In basic mode, pagination isn't supported (DDG HTML returns one page), so
  * only page 0 yields results.
  */
-export async function runSearch(query: string, page = 0, mode: SearchMode = "api"): Promise<RawResult[]> {
+export async function runSearch(query: string, page = 0, mode: SearchMode = "api", gl = ""): Promise<RawResult[]> {
   if (mode === "basic") {
     if (page > 0) return []; // basic mode = single page
     // Throttle to avoid being blocked.
     await sleep(MODE_LIMITS.basic.delayMs);
-    return searchDuckDuckGo(query);
+    return searchDuckDuckGo(query, gl);
   }
 
   const provider = apiProvider();
   switch (provider) {
     case "google_cse":
-      return searchGoogleCSE(query, page * 10 + 1);
+      return searchGoogleCSE(query, page * 10 + 1, gl);
     case "serpapi":
-      return searchSerpApi(query, page * 10);
+      return searchSerpApi(query, page * 10, gl);
     default:
       return [];
   }
