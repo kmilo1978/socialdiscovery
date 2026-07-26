@@ -90,6 +90,9 @@ export default function Home() {
                 <span>Privacy Policy</span>
                 <span>Terms of Service</span>
                 <span>API Docs</span>
+                <a href="https://localrank.com.co" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  by localrank.com.co
+                </a>
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="w-1.5 h-1.5 rounded-full bg-success" />

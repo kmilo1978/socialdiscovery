@@ -1,6 +1,6 @@
 # Social Discovery Engine
 
-A real SaaS-style lead-discovery tool. It finds public social profiles using **Google footprints (dorks)**, and validates emails with **real DNS/MX checks**.
+A real SaaS-style lead-discovery tool by [localrank.com.co](https://localrank.com.co). It finds public social profiles using **Google footprints (dorks)**, and validates emails with **real DNS/MX checks**.
 
 ## How it works
 
@@ -131,3 +131,7 @@ The choice is persisted in `localStorage`. To add a new language: create `src/li
 - Respect each platform's Terms of Service and `robots.txt`.
 - Comply with data-protection laws (GDPR, CCPA) when storing or contacting leads.
 - SerpAPI's free tier is rate-limited (100 searches/month); heavy use requires a paid plan (see "Upgrading to a paid plan" above).
+
+---
+
+Built by [localrank.com.co](https://localrank.com.co)
