@@ -42,7 +42,7 @@ export function ExportsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Total Exports</div>
           <div className="text-2xl font-bold text-foreground">47</div>

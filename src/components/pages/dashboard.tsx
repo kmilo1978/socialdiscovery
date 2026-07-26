@@ -128,7 +128,7 @@ export function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         {loading
           ? Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="bg-card rounded-xl border border-border p-4 space-y-3">

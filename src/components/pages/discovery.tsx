@@ -204,7 +204,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
         {/* Search Method (Basic vs API) */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Search Method</label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => changeMode("basic")}
               className={`flex items-start gap-3 p-3 rounded-lg border text-left transition-all ${
@@ -261,7 +261,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
         </div>
 
         {/* Country + Max Results */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Country</label>
             <select
@@ -338,7 +338,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
         </div>
 
         {/* Checkboxes */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
             { label: "Include Synonyms", checked: includeSynonyms, onChange: setIncludeSynonyms },
             { label: "Exact Match", checked: exactMatch, onChange: setExactMatch },
@@ -383,7 +383,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
       </div>
 
       {/* Estimation Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
         <div className="bg-card rounded-xl border border-border p-4 text-center">
           <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Estimated Results</div>
           <div className="text-lg font-bold text-foreground">~{Math.min(maxResults, cap)}</div>

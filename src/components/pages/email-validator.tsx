@@ -389,7 +389,7 @@ export function EmailValidator({ mode = "single" }: EmailValidatorProps) {
               </div>
 
               {/* Verification Cards */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "Syntax", value: result.syntax, icon: <Shield size={16} /> },
                   { label: "Domain", value: result.domain, icon: <Globe size={16} /> },
