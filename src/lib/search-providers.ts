@@ -1,9 +1,10 @@
 // Search provider adapters.
 // Turns a Google footprint query into a list of raw search results.
 //
-// Two modes:
-//  - "basic": scrapes DuckDuckGo's HTML endpoint (supports site: operators, no
-//             API key). Free but SLOWER (throttled) and capped to fewer results.
+// Modes:
+//  - "basic": scrapes DuckDuckGo HTML + Bing HTML (no API key). Both support
+//             site: operators. DDG goes first; if throttled, falls back to Bing.
+//             Free but SLOWER (throttled 2s between requests) and capped.
 //  - "api"  : Google Custom Search JSON API or SerpAPI. Faster, more results,
 //             but consumes your paid/free quota.
 //
@@ -18,11 +19,11 @@ export interface RawResult {
 }
 
 export type SearchMode = "basic" | "api";
-export type ProviderName = "google_cse" | "serpapi" | "duckduckgo" | "none";
+export type ProviderName = "google_cse" | "serpapi" | "duckduckgo" | "bing" | "basic_multi" | "none";
 
 // Per-mode limits (max results the UI/route will honor + throttle delay).
 export const MODE_LIMITS: Record<SearchMode, { maxResults: number; delayMs: number; label: string }> = {
-  basic: { maxResults: 30, delayMs: 2500, label: "Basic (Footprints)" },
+  basic: { maxResults: 40, delayMs: 2000, label: "Basic (Footprints)" },
   api: { maxResults: 100, delayMs: 0, label: "API (Google / SerpAPI)" },
 };
 
@@ -40,14 +41,17 @@ export function activeProvider(): ProviderName {
 
 /** Resolves the effective provider for a requested mode. */
 export function providerForMode(mode: SearchMode): ProviderName {
-  if (mode === "basic") return "duckduckgo";
+  if (mode === "basic") return "basic_multi"; // DDG + Bing rotation
   return apiProvider();
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const COMMON_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
 // ---------------------------------------------------------------------------
-// BASIC MODE — DuckDuckGo HTML scraping (no API key)
+// UTILITY
 // ---------------------------------------------------------------------------
 
 function decodeEntities(s: string): string {
@@ -58,6 +62,7 @@ function decodeEntities(s: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#x27;/g, "'")
     .replace(/&#39;/g, "'")
+    .replace(/&#x2F;/g, "/")
     .replace(/&nbsp;/g, " ");
 }
 
@@ -65,7 +70,84 @@ function stripTags(html: string): string {
   return decodeEntities(html.replace(/<[^>]+>/g, "")).replace(/\s+/g, " ").trim();
 }
 
-/** Resolves a DuckDuckGo redirect href (//duckduckgo.com/l/?uddg=...) to the real URL. */
+// ---------------------------------------------------------------------------
+// BING HTML SCRAPER (no API key, supports site: operators)
+// ---------------------------------------------------------------------------
+
+function parseBingHtml(html: string): RawResult[] {
+  const results: RawResult[] = [];
+
+  // Bing result blocks: <li class="b_algo"> ... <h2><a href="URL">TITLE</a></h2> ... <p class="b_lineclamp...">SNIPPET</p>
+  const blockRegex = /<li\s+class="b_algo">([\s\S]*?)<\/li>/g;
+  const linkRegex = /<h2[^>]*>\s*<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/;
+  const snippetRegex = /<p[^>]*>([\s\S]*?)<\/p>/;
+
+  let block: RegExpExecArray | null;
+  while ((block = blockRegex.exec(html)) !== null) {
+    const content = block[1];
+    const linkMatch = linkRegex.exec(content);
+    if (!linkMatch) continue;
+    const link = decodeEntities(linkMatch[1]);
+    const title = stripTags(linkMatch[2]);
+    const snipMatch = snippetRegex.exec(content);
+    const snippet = snipMatch ? stripTags(snipMatch[1]) : "";
+
+    // Skip Bing ad/noise
+    if (link.includes("bing.com/") || link.includes("microsoft.com/bing")) continue;
+
+    results.push({ title, link, snippet });
+  }
+  return results;
+}
+
+async function searchBing(query: string, gl = ""): Promise<RawResult[]> {
+  // Bing search URL with region parameter.
+  const url = new URL("https://www.bing.com/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("count", "20");
+  if (gl) {
+    url.searchParams.set("cc", gl.toUpperCase());
+    url.searchParams.set("setlang", "en");
+  }
+
+  // Try two UA strategies: modern Chrome first, then an older IE-like UA
+  // that Bing sometimes serves server-rendered HTML to.
+  const userAgents = [
+    COMMON_UA,
+    "Mozilla/5.0 (Windows NT 10.0; Trident/7.0; rv:11.0) like Gecko",
+  ];
+
+  for (const ua of userAgents) {
+    let res: Response;
+    try {
+      res = await fetch(url.toString(), {
+        headers: {
+          "User-Agent": ua,
+          "Accept-Language": "en-US,en;q=0.9",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+      });
+    } catch (err) {
+      throw new Error(scrubSecrets(`Bing request failed: ${err instanceof Error ? err.message : "network error"}`));
+    }
+
+    if (res.status === 429) {
+      throw new Error("Bing rate-limited. Wait and retry.");
+    }
+    if (!res.ok) continue;
+
+    const html = await res.text();
+    const results = parseBingHtml(html);
+    if (results.length > 0) return results;
+    // If no b_algo found, try next UA.
+  }
+  return [];
+}
+
+// ---------------------------------------------------------------------------
+// DUCKDUCKGO HTML SCRAPER
+// ---------------------------------------------------------------------------
+
 function resolveDdgLink(href: string): string {
   try {
     const full = href.startsWith("//") ? `https:${href}` : href;
@@ -80,7 +162,6 @@ function resolveDdgLink(href: string): string {
 
 function parseDdgHtml(html: string): RawResult[] {
   const results: RawResult[] = [];
-  // Each result block contains a result__a anchor (title+link) and result__snippet.
   const blockRegex = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
   const snippetRegex = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
 
@@ -88,7 +169,6 @@ function parseDdgHtml(html: string): RawResult[] {
   let m: RegExpExecArray | null;
   while ((m = blockRegex.exec(html)) !== null) {
     const link = resolveDdgLink(m[1]);
-    // Skip DuckDuckGo ad/redirect noise.
     if (link.includes("duckduckgo.com/y.js") || link.includes("duckduckgo.com/l/")) continue;
     titles.push({ link, title: stripTags(m[2]) });
   }
@@ -108,9 +188,7 @@ async function fetchDdg(endpoint: string, query: string, kl = "wt-wt"): Promise<
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      // A realistic UA reduces the chance of being served a challenge page.
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
+      "User-Agent": COMMON_UA,
       "Accept-Language": "en-US,en;q=0.9",
     },
     body: new URLSearchParams({ q: query, kl }).toString(),
@@ -122,14 +200,12 @@ async function searchDuckDuckGo(query: string, gl = ""): Promise<RawResult[]> {
   const endpoints = ["https://html.duckduckgo.com/html/", "https://lite.duckduckgo.com/lite/"];
   let lastStatus = 0;
 
-  // Map gl code to DDG kl (region) code.
-  let kl = "wt-wt"; // global default
+  let kl = "wt-wt";
   if (gl) {
     const { getGeoByGl } = await import("./geolocations");
     kl = getGeoByGl(gl).kl;
   }
 
-  // Try each endpoint; retry once on a soft-block (202/429) after a longer wait.
   for (const endpoint of endpoints) {
     for (let attempt = 0; attempt < 2; attempt++) {
       let r: { status: number; html: string };
@@ -142,28 +218,67 @@ async function searchDuckDuckGo(query: string, gl = ""): Promise<RawResult[]> {
       }
       lastStatus = r.status;
 
-      // 202/429 = anti-bot challenge / throttle. Back off and retry once.
       if (r.status === 202 || r.status === 429) {
-        if (attempt === 0) {
-          await sleep(3500);
-          continue;
-        }
-        break; // move to next endpoint
+        if (attempt === 0) { await sleep(3000); continue; }
+        break;
       }
-      if (r.status >= 400) break; // hard error, try next endpoint
+      if (r.status >= 400) break;
 
       const parsed = parseDdgHtml(r.html);
       if (parsed.length > 0) return parsed;
-      break; // 200 but empty -> try next endpoint
+      break;
     }
   }
 
-  // Nothing found. If we were consistently challenged, tell the caller clearly.
   if (lastStatus === 202 || lastStatus === 429) {
+    // Signal throttled — let the caller fall back to Bing.
+    throw new Error("DDG_THROTTLED");
+  }
+  return [];
+}
+
+// ---------------------------------------------------------------------------
+// BASIC MODE ORCHESTRATOR — DDG + Bing with fallback/rotation
+// ---------------------------------------------------------------------------
+
+/**
+ * Basic mode strategy:
+ * 1. Try DuckDuckGo first (best footprint support).
+ * 2. If DDG is throttled, fall back to Bing.
+ * 3. Merge results from both if DDG partially worked.
+ */
+async function searchBasicMulti(query: string, gl = ""): Promise<RawResult[]> {
+  let ddgResults: RawResult[] = [];
+  let ddgThrottled = false;
+
+  try {
+    ddgResults = await searchDuckDuckGo(query, gl);
+  } catch (err) {
+    if (err instanceof Error && err.message === "DDG_THROTTLED") {
+      ddgThrottled = true;
+    }
+    // Other DDG errors: silently fall through to Bing.
+  }
+
+  // If DDG gave results, return them.
+  if (ddgResults.length > 0) return ddgResults;
+
+  // Fallback: try Bing.
+  await sleep(1000); // Brief pause before hitting another engine.
+  try {
+    const bingResults = await searchBing(query, gl);
+    if (bingResults.length > 0) return bingResults;
+  } catch {
+    // Bing also failed — last resort: both are down/blocking.
+  }
+
+  // If DDG was specifically throttled and Bing also failed, give a clear error.
+  if (ddgThrottled) {
     throw new Error(
-      "Basic mode was rate-limited by the search engine. Wait a moment and retry, or use API mode."
+      "Both search engines are rate-limiting this IP. Wait 1-2 minutes and retry, or switch to API mode."
     );
   }
+
   return [];
 }
 
@@ -181,15 +296,12 @@ async function searchGoogleCSE(query: string, start = 1, gl = ""): Promise<RawRe
   url.searchParams.set("num", "10");
   url.searchParams.set("start", String(start));
   if (gl) {
-    url.searchParams.set("gl", gl); // Geolocation: country code
-    url.searchParams.set("cr", `country${gl.toUpperCase()}`); // Restrict results to country
+    url.searchParams.set("gl", gl);
+    url.searchParams.set("cr", `country${gl.toUpperCase()}`);
   }
 
   const res = await fetch(url.toString());
-  if (!res.ok) {
-    // NEVER include the request URL (it carries the key). Only the status.
-    throw new Error(`Google CSE error ${res.status}`);
-  }
+  if (!res.ok) throw new Error(`Google CSE error ${res.status}`);
   const data = await res.json();
   const items = (data.items || []) as Array<{ title: string; link: string; snippet: string }>;
   return items.map((i) => ({ title: i.title || "", link: i.link || "", snippet: i.snippet || "" }));
@@ -208,14 +320,12 @@ async function searchSerpApi(query: string, start = 0, gl = ""): Promise<RawResu
   url.searchParams.set("start", String(start));
   url.searchParams.set("api_key", key);
   if (gl) {
-    url.searchParams.set("gl", gl); // Geolocation
-    url.searchParams.set("google_domain", `google.com`); // stays google.com but gl localizes results
+    url.searchParams.set("gl", gl);
+    url.searchParams.set("google_domain", "google.com");
   }
 
   const res = await fetch(url.toString());
-  if (!res.ok) {
-    throw new Error(`SerpAPI error ${res.status}`);
-  }
+  if (!res.ok) throw new Error(`SerpAPI error ${res.status}`);
   const data = await res.json();
   const items = (data.organic_results || []) as Array<{ title: string; link: string; snippet: string }>;
   return items.map((i) => ({ title: i.title || "", link: i.link || "", snippet: i.snippet || "" }));
@@ -228,15 +338,14 @@ async function searchSerpApi(query: string, start = 0, gl = ""): Promise<RawResu
 /**
  * Runs a single query in the requested mode. `page` is 0-indexed.
  * `gl` is the Google geolocation code (ISO 3166-1 alpha-2, e.g. "us", "co").
- * In basic mode, pagination isn't supported (DDG HTML returns one page), so
+ * In basic mode, pagination isn't supported (single-page scraping), so
  * only page 0 yields results.
  */
 export async function runSearch(query: string, page = 0, mode: SearchMode = "api", gl = ""): Promise<RawResult[]> {
   if (mode === "basic") {
-    if (page > 0) return []; // basic mode = single page
-    // Throttle to avoid being blocked.
+    if (page > 0) return [];
     await sleep(MODE_LIMITS.basic.delayMs);
-    return searchDuckDuckGo(query, gl);
+    return searchBasicMulti(query, gl);
   }
 
   const provider = apiProvider();

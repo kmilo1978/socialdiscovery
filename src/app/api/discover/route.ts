@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     const avoidDuplicates = toBool(body.avoidDuplicates, true);
     const validateEmails = toBool(body.validateEmails);
     const requireEmail = toBool(body.requireEmail, true);
+    const enrichResults = toBool(body.enrichResults);
 
     // Clamp maxResults to the selected mode's ceiling (anti-abuse / cost control).
     const modeCap = MODE_LIMITS[mode].maxResults;
@@ -144,9 +145,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Optional URL enrichment (visits each profile to get bio, followers, etc.)
+    if (enrichResults && leads.length > 0) {
+      const { enrichLeads } = await import("@/lib/enrichment");
+      leads = await enrichLeads(leads, 5); // max 5 concurrent fetches
+    }
+
     return NextResponse.json({
       provider,
       mode,
+      enriched: enrichResults,
       queries: usedQueries,
       total: leads.length,
       rawCount: rawAll.length,

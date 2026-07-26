@@ -310,6 +310,7 @@ export function ResultsPage({ data, onBack }: ResultsPageProps) {
                   <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
                   <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Name / Caption</th>
                   <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Source</th>
+                  <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Followers</th>
                   <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tel</th>
                   <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
                   <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Score</th>
@@ -366,6 +367,12 @@ export function ResultsPage({ data, onBack }: ResultsPageProps) {
                           <span className="truncate">{result.platform}</span>
                           <ExternalLink size={11} className="shrink-0" />
                         </a>
+                      </td>
+                      {/* Followers */}
+                      <td className="px-3 py-3">
+                        <span className={`text-sm ${result.followers && result.followers !== "—" ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                          {result.followers}
+                        </span>
                       </td>
                       {/* Tel */}
                       <td className="px-3 py-3 text-sm text-muted-foreground">{result.phone}</td>

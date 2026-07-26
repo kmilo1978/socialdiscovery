@@ -15,7 +15,7 @@ type Mode = "basic" | "api";
 
 // Mirror of server-side MODE_LIMITS (search-providers.ts). Keep in sync.
 const MODE_LIMITS: Record<Mode, { maxResults: number; approxTime: string; label: string }> = {
-  basic: { maxResults: 30, approxTime: "~30-60s", label: "Basic (Footprints)" },
+  basic: { maxResults: 40, approxTime: "~30-60s", label: "Basic (Footprints)" },
   api: { maxResults: 100, approxTime: "~10-20s", label: "API (Google / SerpAPI)" },
 };
 
@@ -92,6 +92,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
   const [avoidDuplicates, setAvoidDuplicates] = useState(true);
   const [validateEmails, setValidateEmails] = useState(true);
   const [requireEmail, setRequireEmail] = useState(true);
+  const [enrichResults, setEnrichResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
   const title = platformLabels[platform] || "Discovery Search";
@@ -136,6 +137,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
           avoidDuplicates,
           validateEmails,
           requireEmail,
+          enrichResults,
         }),
       });
 
@@ -216,7 +218,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
                   Basic (Footprints)
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
-                  No API key · slower (throttled) · max 30 results
+                  No API key · slower (throttled) · max 40 results
                 </div>
               </div>
             </button>
@@ -342,6 +344,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
             { label: "Avoid Duplicates", checked: avoidDuplicates, onChange: setAvoidDuplicates },
             { label: "Validate Emails", checked: validateEmails, onChange: setValidateEmails },
             { label: "Require Email (footprint)", checked: requireEmail, onChange: setRequireEmail },
+            { label: "Enrich Profiles (bio + followers)", checked: enrichResults, onChange: setEnrichResults },
           ].map((item) => (
             <label
               key={item.label}
@@ -399,9 +402,9 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
         <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
           <Globe size={16} className="text-primary shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground leading-relaxed">
-            <span className="text-primary font-medium">Basic mode</span> scrapes a public search engine with
-            your footprint query — no API key needed. To avoid being blocked it is throttled (a few seconds
-            between requests) and capped at <span className="text-foreground font-medium">30 results</span>.
+            <span className="text-primary font-medium">Basic mode</span> uses DuckDuckGo + Bing as fallback —
+            no API key needed. To avoid being blocked it is throttled (~2s between requests)
+            and capped at <span className="text-foreground font-medium">40 results</span>.
             Best for quick, low-volume searches.
           </p>
         </div>
