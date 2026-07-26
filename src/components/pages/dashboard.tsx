@@ -231,7 +231,31 @@ export function Dashboard() {
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{formatDate(search.createdAt)}</td>
                     <td className="px-4 py-3 text-right">
-                      <button className="text-muted-foreground hover:text-foreground transition-colors">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/history?searchId=${search.id}`);
+                            const data = await res.json().catch(() => null);
+                            if (!data?.leads?.length) return;
+                            const headers = ["Email", "Name", "Platform", "Profile URL", "Phone", "Country"];
+                            const rows = data.leads.map((l: Record<string, string>) =>
+                              [l.email, l.name, l.platform, l.profileUrl, l.phone, l.country]
+                                .map((v: string) => `"${(v || "").replace(/"/g, '""')}"`)
+                                .join(",")
+                            );
+                            const csv = [headers.join(","), ...rows].join("\n");
+                            const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${search.keyword}_${search.searchType}.csv`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          } catch { /* ignore */ }
+                        }}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                        title="Download leads as CSV"
+                      >
                         <Download size={14} />
                       </button>
                     </td>
