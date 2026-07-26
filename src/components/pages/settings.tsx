@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, Bell, CreditCard, Globe } from "lucide-react";
+import { User, Bell, CreditCard, Globe, Server } from "lucide-react";
 import { useI18n, LOCALES, type Locale } from "@/lib/i18n";
 
 export function SettingsPage() {
@@ -154,6 +154,73 @@ export function SettingsPage() {
               </button>
             )
           )}
+        </div>
+      </div>
+
+      {/* Deployment Reminder */}
+      <div className="bg-card rounded-xl border border-warning/30 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Server size={18} className="text-warning" />
+          <h3 className="text-sm font-semibold text-foreground">Deployment</h3>
+        </div>
+        <div className="p-4 rounded-lg bg-warning/5 border border-warning/20 mb-4">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <span className="text-warning font-medium">Important:</span> This app requires a <span className="text-foreground font-medium">VPS or dedicated server</span> (Node.js 22+, persistent filesystem, outbound HTTP/DNS).
+            Static hosts like Netlify or Vercel <span className="text-foreground font-medium">will NOT work</span> — the backend needs SQLite, real DNS lookups, and a running process.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground mb-3">Recommended hosting providers:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <a
+              href="https://www.hostinger.com/vps-hosting"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/30 transition-colors"
+            >
+              <span className="text-lg">🖥️</span>
+              <div>
+                <div className="text-sm font-medium text-foreground">Hostinger VPS</div>
+                <div className="text-[11px] text-muted-foreground">From $4.99/mo · Full root access</div>
+              </div>
+            </a>
+            <a
+              href="https://railway.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/30 transition-colors"
+            >
+              <span className="text-lg">🚂</span>
+              <div>
+                <div className="text-sm font-medium text-foreground">Railway</div>
+                <div className="text-[11px] text-muted-foreground">Free tier · Auto-deploy from GitHub</div>
+              </div>
+            </a>
+            <a
+              href="https://render.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/30 transition-colors"
+            >
+              <span className="text-lg">🌐</span>
+              <div>
+                <div className="text-sm font-medium text-foreground">Render</div>
+                <div className="text-[11px] text-muted-foreground">Free tier · Node.js native support</div>
+              </div>
+            </a>
+            <a
+              href="https://www.digitalocean.com/products/droplets"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/30 transition-colors"
+            >
+              <span className="text-lg">🌊</span>
+              <div>
+                <div className="text-sm font-medium text-foreground">DigitalOcean</div>
+                <div className="text-[11px] text-muted-foreground">From $6/mo · Reliable VPS</div>
+              </div>
+            </a>
+          </div>
         </div>
       </div>
 

@@ -15,6 +15,7 @@ import {
   Inbox,
   Loader2,
   Mail,
+  EyeOff,
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import type { SearchState } from "@/app/page";
@@ -54,6 +55,7 @@ export function ResultsPage({ data, onBack }: ResultsPageProps) {
   const [verifying, setVerifying] = useState<string[]>([]);
   const [verifyingAll, setVerifyingAll] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [demoBlur, setDemoBlur] = useState(false);
 
   const filteredResults = leads.filter((r) => {
     const q = searchFilter.toLowerCase();
@@ -224,6 +226,16 @@ export function ResultsPage({ data, onBack }: ResultsPageProps) {
             Copy Emails
           </button>
           <button
+            onClick={() => setDemoBlur(!demoBlur)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors ${
+              demoBlur ? "border-warning bg-warning/10 text-warning" : "border-border text-foreground hover:bg-white/5"
+            }`}
+            title="Blur sensitive data for demos/screenshots"
+          >
+            <EyeOff size={14} />
+            {demoBlur ? "Blur ON" : "Blur"}
+          </button>
+          <button
             onClick={handleExport}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
           >
@@ -335,7 +347,7 @@ export function ResultsPage({ data, onBack }: ResultsPageProps) {
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-2">
                           <Mail size={12} className="text-muted-foreground shrink-0" />
-                          <span className="text-sm text-foreground font-medium truncate max-w-[200px]">
+                          <span className={`text-sm text-foreground font-medium truncate max-w-[200px] ${demoBlur ? "blur-sm select-none" : ""}`}>
                             {result.email}
                           </span>
                           {hasEmail && (
@@ -351,7 +363,7 @@ export function ResultsPage({ data, onBack }: ResultsPageProps) {
                       </td>
                       {/* Caption */}
                       <td className="px-3 py-3">
-                        <span className="text-sm text-muted-foreground line-clamp-2 max-w-[280px] block">
+                        <span className={`text-sm text-muted-foreground line-clamp-2 max-w-[280px] block ${demoBlur ? "blur-sm select-none" : ""}`}>
                           {result.description}
                         </span>
                       </td>
@@ -375,7 +387,7 @@ export function ResultsPage({ data, onBack }: ResultsPageProps) {
                         </span>
                       </td>
                       {/* Tel */}
-                      <td className="px-3 py-3 text-sm text-muted-foreground">{result.phone}</td>
+                      <td className={`px-3 py-3 text-sm text-muted-foreground ${demoBlur ? "blur-sm select-none" : ""}`}>{result.phone}</td>
                       {/* Status */}
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1.5">
