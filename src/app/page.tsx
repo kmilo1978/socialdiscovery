@@ -13,6 +13,7 @@ import { ApiPage } from "@/components/pages/api-page";
 import { SettingsPage } from "@/components/pages/settings";
 import { ToastProvider } from "@/components/ui/toast";
 import { DashboardSkeleton } from "@/components/ui/skeleton";
+import { I18nProvider } from "@/lib/i18n";
 import type { Lead } from "@/lib/extractors";
 
 export interface SearchState {
@@ -75,27 +76,29 @@ export default function Home() {
   };
 
   return (
-    <ToastProvider>
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar currentPage={currentPage} onNavigate={handleNavigate} />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <TopBar currentPage={currentPage} />
-          <main className="flex-1 overflow-y-auto p-6">
-            {renderPage()}
-          </main>
-          <footer className="h-10 border-t border-border bg-background/50 flex items-center justify-between px-6 shrink-0">
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span>Privacy Policy</span>
-              <span>Terms of Service</span>
-              <span>API Docs</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="w-1.5 h-1.5 rounded-full bg-success" />
-              System Status: All Systems Operational
-            </div>
-          </footer>
+    <I18nProvider>
+      <ToastProvider>
+        <div className="flex h-screen overflow-hidden">
+          <Sidebar currentPage={currentPage} onNavigate={handleNavigate} />
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <TopBar currentPage={currentPage} />
+            <main className="flex-1 overflow-y-auto p-6">
+              {renderPage()}
+            </main>
+            <footer className="h-10 border-t border-border bg-background/50 flex items-center justify-between px-6 shrink-0">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>Privacy Policy</span>
+                <span>Terms of Service</span>
+                <span>API Docs</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                System Status: All Systems Operational
+              </div>
+            </footer>
+          </div>
         </div>
-      </div>
-    </ToastProvider>
+      </ToastProvider>
+    </I18nProvider>
   );
 }

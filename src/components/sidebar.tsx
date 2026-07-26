@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import {
   LayoutDashboard,
   Search,
@@ -119,10 +120,43 @@ const bottomNav: NavItem[] = [
 ];
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     discovery: true,
     "email-validator": true,
   });
+
+  // Translate sidebar labels by their nav item IDs.
+  const labelFor = (id: string, fallback: string): string => {
+    const map: Record<string, string> = {
+      dashboard: t.nav.dashboard,
+      discovery: t.nav.discovery,
+      instagram: t.nav.instagram,
+      "instagram-keyword": t.nav.keyword,
+      "instagram-hashtag": t.nav.hashtag,
+      twitter: t.nav.twitter,
+      "twitter-keyword": t.nav.keyword,
+      "twitter-followers": t.nav.followers,
+      "twitter-following": t.nav.following,
+      facebook: t.nav.facebook,
+      "facebook-keyword": t.nav.keyword,
+      linkedin: t.nav.linkedin,
+      "linkedin-keyword": t.nav.keyword,
+      youtube: t.nav.youtube,
+      "youtube-keyword": t.nav.keyword,
+      tiktok: t.nav.tiktok,
+      "tiktok-keyword": t.nav.keyword,
+      "multiple-channels": t.nav.multipleChannels,
+      "email-validator": t.nav.emailValidator,
+      "single-validation": t.nav.singleValidation,
+      "bulk-validation": t.nav.bulkValidation,
+      "search-history": t.nav.searchHistory,
+      exports: t.nav.exports,
+      api: t.nav.apiAccess,
+      settings: t.nav.settings,
+    };
+    return map[id] || fallback;
+  };
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -165,7 +199,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           <span className={cn("shrink-0", active && "text-primary")}>
             {item.icon}
           </span>
-          <span className="flex-1 text-left truncate">{item.label}</span>
+          <span className="flex-1 text-left truncate">{labelFor(item.id, item.label)}</span>
           {hasChildren && (
             <span className="text-muted-foreground">
               {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -190,7 +224,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           <img src="/logo.svg" alt="Social Discovery Engine" width={32} height={32} className="rounded-lg" />
           <div>
             <h1 className="text-sm font-semibold text-foreground">Social</h1>
-            <p className="text-[11px] text-muted-foreground -mt-0.5">Discovery Engine</p>
+            <p className="text-[11px] text-muted-foreground -mt-0.5">{t.appTagline}</p>
           </div>
         </div>
       </div>
@@ -211,7 +245,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           )}
         >
           <Zap size={16} />
-          API Access
+          {t.nav.apiAccess}
         </button>
         <button
           onClick={() => onNavigate("settings")}
@@ -222,7 +256,7 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
           )}
         >
           <Settings size={18} />
-          Settings
+          {t.nav.settings}
         </button>
       </div>
     </aside>

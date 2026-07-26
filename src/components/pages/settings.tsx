@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { User, Bell, Shield, CreditCard, Globe, Palette } from "lucide-react";
+import { User, Bell, CreditCard, Globe } from "lucide-react";
+import { useI18n, LOCALES, type Locale } from "@/lib/i18n";
 
 export function SettingsPage() {
+  const { t, locale, setLocale } = useI18n();
   const [notifications, setNotifications] = useState({
     searchComplete: true,
     weeklyReport: true,
@@ -15,9 +17,9 @@ export function SettingsPage() {
     <div className="space-y-6 max-w-3xl mx-auto">
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-foreground">Settings</h2>
+        <h2 className="text-xl font-semibold text-foreground">{t.settings.title}</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage your account and preferences.
+          {t.settings.subtitle}
         </p>
       </div>
 
@@ -128,10 +130,37 @@ export function SettingsPage() {
         </div>
       </div>
 
+      {/* Language */}
+      <div className="bg-card rounded-xl border border-border p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <Globe size={18} className="text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">{t.settings.language}</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">{t.settings.languageHint}</p>
+        <div className="grid grid-cols-3 gap-3">
+          {(Object.entries(LOCALES) as [Locale, { label: string; flag: string }][]).map(
+            ([code, { label, flag }]) => (
+              <button
+                key={code}
+                onClick={() => setLocale(code)}
+                className={`flex items-center gap-2.5 p-3 rounded-lg border transition-all ${
+                  locale === code
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-foreground hover:border-primary/30"
+                }`}
+              >
+                <span className="text-lg">{flag}</span>
+                <span className="text-sm font-medium">{label}</span>
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
       {/* Save */}
       <div className="flex justify-end">
         <button className="px-6 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors">
-          Save Changes
+          {t.settings.save}
         </button>
       </div>
     </div>

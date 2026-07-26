@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "social-discovery": {
+      "command": "node",
+      "args": ["--experimental-strip-types", "mcp-server.mjs"],
+      "env": {},
+      "disabled": false
+    }
+  }
+}
