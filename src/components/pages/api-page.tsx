@@ -1,13 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Copy, Eye, EyeOff, RefreshCw, Code, Zap, Shield, Activity, CheckCircle, XCircle } from "lucide-react";
+import {
+  Copy,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Code,
+  Zap,
+  Shield,
+  Activity,
+  CheckCircle,
+  XCircle,
+  ExternalLink,
+  ArrowUpRight,
+} from "lucide-react";
+
+interface ApiUsage {
+  monthlyApiSearches: number;
+  todayApiSearches: number;
+  lifetimeApiSearches: number;
+}
 
 interface ProviderStatus {
   provider: string;
   connected: boolean;
-  google: { hasKey: boolean; hasCx: boolean };
-  serpapi: { hasKey: boolean };
+  serpapi: {
+    hasKey: boolean;
+    monthlyFreeQuota: number;
+    usage: ApiUsage;
+  };
   emailValidation: boolean;
 }
 
@@ -15,38 +37,54 @@ export function ApiPage() {
   const [showKey, setShowKey] = useState(false);
   const apiKey = "sk_live_4f7cff_a8b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6";
   const [status, setStatus] = useState<ProviderStatus | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     fetch("/api/status")
       .then((r) => r.json())
       .then(setStatus)
-      .catch(() => setStatus(null));
+      .catch(() => setStatus(null))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
   }, []);
 
   const providerLabel =
-    status?.provider === "google_cse"
-      ? "Google Custom Search"
-      : status?.provider === "serpapi"
-      ? "SerpAPI"
-      : "Not configured (demo mode)";
+    status?.provider === "serpapi" ? "SerpAPI" : "Not configured (demo mode)";
+
+  const quota = status?.serpapi?.monthlyFreeQuota ?? 100;
+  const used = status?.serpapi?.usage?.monthlyApiSearches ?? 0;
+  const usagePct = quota > 0 ? Math.min(100, Math.round((used / quota) * 100)) : 0;
+  const nearLimit = usagePct >= 80;
 
   const endpoints = [
-    { method: "POST", path: "/api/v1/discover", description: "Start a new discovery search" },
-    { method: "GET", path: "/api/v1/results/{id}", description: "Get search results by ID" },
-    { method: "POST", path: "/api/v1/validate", description: "Validate a single email" },
-    { method: "POST", path: "/api/v1/validate/bulk", description: "Validate emails in bulk" },
-    { method: "GET", path: "/api/v1/credits", description: "Get remaining credits" },
-    { method: "GET", path: "/api/v1/history", description: "Get search history" },
+    { method: "POST", path: "/api/discover", description: "Start a discovery search (Basic or API mode)" },
+    { method: "GET", path: "/api/history", description: "List past searches or reopen results by searchId" },
+    { method: "POST", path: "/api/validate-email", description: "Validate one email (or bulk, up to 500)" },
+    { method: "GET", path: "/api/stats", description: "Dashboard aggregates (profiles, emails, success rate)" },
+    { method: "GET", path: "/api/status", description: "Search provider connection + usage status" },
   ];
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div>
-        <h2 className="text-xl font-semibold text-foreground">API Access</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Integrate Social Discovery Engine into your workflow.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">API Access</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Integrate Social Discovery Engine into your workflow.
+          </p>
+        </div>
+        <button
+          onClick={load}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm text-foreground hover:bg-white/5 transition-colors"
+        >
+          <RefreshCw size={14} />
+          Refresh
+        </button>
       </div>
 
       {/* Search Provider Status */}
@@ -62,7 +100,7 @@ export function ApiPage() {
                 <XCircle size={18} className="text-warning" />
               )}
               <div>
-                <div className="text-sm font-medium text-foreground">Discovery (Google Footprints)</div>
+                <div className="text-sm font-medium text-foreground">Discovery (API mode)</div>
                 <div className="text-xs text-muted-foreground mt-0.5">{providerLabel}</div>
               </div>
             </div>
@@ -71,7 +109,7 @@ export function ApiPage() {
                 status?.connected ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
               }`}
             >
-              {status === null ? "Checking..." : status.connected ? "Connected" : "Demo mode"}
+              {loading ? "Checking..." : status?.connected ? "Connected" : "Demo mode"}
             </span>
           </div>
 
@@ -84,56 +122,120 @@ export function ApiPage() {
                 <div className="text-xs text-muted-foreground mt-0.5">No API key required</div>
               </div>
             </div>
-            <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-success/10 text-success">
-              Active
-            </span>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-success/10 text-success">Active</span>
+          </div>
+
+          {/* Basic mode (always available) */}
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+            <div className="flex items-center gap-3">
+              <CheckCircle size={18} className="text-success" />
+              <div>
+                <div className="text-sm font-medium text-foreground">Basic Mode (DuckDuckGo + Bing)</div>
+                <div className="text-xs text-muted-foreground mt-0.5">No API key required · throttled</div>
+              </div>
+            </div>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-md bg-success/10 text-success">Active</span>
           </div>
         </div>
 
-        {!status?.connected && status !== null && (
+        {!status?.connected && !loading && (
           <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground leading-relaxed">
-            To enable live discovery, add <code className="text-primary">GOOGLE_CSE_KEY</code> and{" "}
-            <code className="text-primary">GOOGLE_CSE_CX</code> to <code className="text-primary">.env.local</code>{" "}
-            then restart the server. See the README for the step-by-step guide.
+            To enable live API-mode discovery, add <code className="text-primary">SERPAPI_KEY</code> to{" "}
+            <code className="text-primary">.env.local</code> then restart the server. Get a free key at{" "}
+            <a
+              href="https://serpapi.com/users/sign_up"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              serpapi.com
+            </a>
+            . Basic mode and email validation don&apos;t need any key.
           </div>
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <Zap size={14} />
-            <span className="text-xs uppercase tracking-wider">Plan</span>
+      {/* Usage / Quota */}
+      {status?.connected && (
+        <div className="bg-card rounded-xl border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-foreground">SerpAPI Usage This Month</h3>
+            <a
+              href="https://serpapi.com/manage-api-key"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              View exact usage on SerpAPI
+              <ExternalLink size={11} />
+            </a>
           </div>
-          <div className="text-lg font-bold text-foreground">Pro</div>
+
+          <div className="flex items-baseline justify-between mb-2">
+            <span className="text-2xl font-bold text-foreground">
+              {used} <span className="text-sm text-muted-foreground font-normal">/ {quota} searches</span>
+            </span>
+            <span className={`text-xs font-medium ${nearLimit ? "text-warning" : "text-muted-foreground"}`}>
+              {usagePct}% of free tier
+            </span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${nearLimit ? "bg-warning" : "bg-primary"}`}
+              style={{ width: `${usagePct}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Counted from searches run in <span className="text-foreground font-medium">API mode</span> this
+            calendar month. Basic mode (DuckDuckGo/Bing) doesn&apos;t count against this quota.
+          </p>
+
+          {nearLimit && (
+            <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-warning/5 border border-warning/20">
+              <Zap size={14} className="text-warning shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">
+                You&apos;re close to your free monthly quota. Upgrade below to avoid interruptions, or switch to
+                Basic mode for the rest of the month.
+              </p>
+            </div>
+          )}
         </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <Activity size={14} />
-            <span className="text-xs uppercase tracking-wider">Requests Today</span>
+      )}
+
+      {/* Upgrade to a paid plan */}
+      <div className="bg-card rounded-xl border border-primary/30 p-5 bg-gradient-to-br from-primary/5 to-transparent">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Zap size={16} className="text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Need more searches?</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-md">
+              This app uses your own SerpAPI key, so upgrading is entirely under your control — no changes
+              needed here. SerpAPI plans start at 5,000 searches/month; pick one on their pricing page and
+              your existing key keeps working automatically once you upgrade.
+            </p>
           </div>
-          <div className="text-lg font-bold text-foreground">1,247</div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <Shield size={14} />
-            <span className="text-xs uppercase tracking-wider">Rate Limit</span>
-          </div>
-          <div className="text-lg font-bold text-foreground">100/min</div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <Code size={14} />
-            <span className="text-xs uppercase tracking-wider">Version</span>
-          </div>
-          <div className="text-lg font-bold text-foreground">v1.4</div>
+          <a
+            href="https://serpapi.com/pricing"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors whitespace-nowrap"
+          >
+            Upgrade Plan
+            <ArrowUpRight size={14} />
+          </a>
         </div>
       </div>
 
-      {/* API Key */}
+      {/* Local API Key (for your own scripts) */}
       <div className="bg-card rounded-xl border border-border p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3">API Key</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Local API Key</h3>
+        <p className="text-xs text-muted-foreground mb-3">
+          A demo credential for calling this app&apos;s own endpoints from external scripts. It is not sent to
+          any third party — the app talks to SerpAPI server-side using your <code className="text-primary">SERPAPI_KEY</code> from{" "}
+          <code className="text-primary">.env.local</code>, which never reaches the browser.
+        </p>
         <div className="flex items-center gap-3">
           <div className="flex-1 h-10 px-4 bg-background rounded-lg border border-border flex items-center">
             <code className="text-sm text-foreground font-mono">
@@ -149,13 +251,7 @@ export function ApiPage() {
           <button className="w-10 h-10 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
             <Copy size={16} />
           </button>
-          <button className="w-10 h-10 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors">
-            <RefreshCw size={16} />
-          </button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Keep your API key secret. Never share it in client-side code.
-        </p>
       </div>
 
       {/* Endpoints */}
@@ -167,9 +263,11 @@ export function ApiPage() {
               key={i}
               className="flex items-center gap-4 p-3 rounded-lg border border-border hover:border-primary/30 transition-colors"
             >
-              <span className={`text-xs font-bold px-2 py-1 rounded ${
-                ep.method === "POST" ? "bg-primary/10 text-primary" : "bg-success/10 text-success"
-              }`}>
+              <span
+                className={`text-xs font-bold px-2 py-1 rounded ${
+                  ep.method === "POST" ? "bg-primary/10 text-primary" : "bg-success/10 text-success"
+                }`}
+              >
                 {ep.method}
               </span>
               <code className="text-sm font-mono text-foreground flex-1">{ep.path}</code>
@@ -184,14 +282,14 @@ export function ApiPage() {
         <h3 className="text-sm font-semibold text-foreground mb-3">Quick Start</h3>
         <div className="bg-background rounded-lg border border-border p-4 overflow-x-auto">
           <pre className="text-sm font-mono text-foreground">
-{`curl -X POST https://api.socialdiscovery.io/v1/discover \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
+            {`curl -X POST http://localhost:3000/api/discover \\
   -H "Content-Type: application/json" \\
   -d '{
-    "platform": "linkedin",
+    "platform": "linkedin-keyword",
     "keyword": "SaaS founders",
-    "country": "US",
-    "max_results": 1000
+    "country": "United States",
+    "mode": "api",
+    "maxResults": 20
   }'`}
           </pre>
         </div>

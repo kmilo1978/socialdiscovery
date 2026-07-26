@@ -16,7 +16,7 @@ type Mode = "basic" | "api";
 // Mirror of server-side MODE_LIMITS (search-providers.ts). Keep in sync.
 const MODE_LIMITS: Record<Mode, { maxResults: number; approxTime: string; label: string }> = {
   basic: { maxResults: 40, approxTime: "~30-60s", label: "Basic (Footprints)" },
-  api: { maxResults: 100, approxTime: "~10-20s", label: "API (Google / SerpAPI)" },
+  api: { maxResults: 100, approxTime: "~10-20s", label: "API (SerpAPI)" },
 };
 
 const searchTypeCodes: Record<string, string> = {
@@ -154,10 +154,10 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
       }
 
       const providerName =
-        data.provider === "google_cse"
-          ? "Google Custom Search"
-          : data.provider === "duckduckgo"
-          ? "DuckDuckGo (Basic)"
+        data.provider === "serpapi"
+          ? "SerpAPI"
+          : data.provider === "duckduckgo" || data.provider === "basic_multi"
+          ? "DuckDuckGo / Bing (Basic)"
           : data.provider;
 
       addToast({
@@ -234,7 +234,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
               <KeyRound size={18} className={mode === "api" ? "text-primary mt-0.5" : "text-muted-foreground mt-0.5"} />
               <div>
                 <div className={`text-sm font-medium ${mode === "api" ? "text-primary" : "text-foreground"}`}>
-                  API (Google / SerpAPI)
+                  API (SerpAPI)
                 </div>
                 <div className="text-[11px] text-muted-foreground mt-0.5">
                   Needs API key · faster · max 100 results
@@ -413,10 +413,11 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
         <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
           <KeyRound size={16} className="text-primary shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground leading-relaxed">
-            <span className="text-primary font-medium">API mode</span> uses the Google Custom Search API (or
-            SerpAPI) — faster and up to <span className="text-foreground font-medium">100 results</span>, but
-            it consumes your quota. Add your key in <code className="text-primary">.env.local</code> (see
-            README). Without a key, API mode returns demo data.
+            <span className="text-primary font-medium">API mode</span> uses SerpAPI — faster and up to{" "}
+            <span className="text-foreground font-medium">100 results</span>, but it consumes your quota. Add
+            your key as <code className="text-primary">SERPAPI_KEY</code> in{" "}
+            <code className="text-primary">.env.local</code> (see README, or the API Access page to check
+            usage and upgrade). Without a key, API mode returns demo data.
           </p>
         </div>
       )}

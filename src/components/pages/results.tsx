@@ -239,9 +239,9 @@ export function ResultsPage({ data, onBack }: ResultsPageProps) {
           <Inbox size={15} className="text-warning shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground leading-relaxed">
             <span className="text-warning font-medium">Demo data.</span> These are sample results in the
-            real export format. Add <code className="text-primary">GOOGLE_CSE_KEY</code> +{" "}
-            <code className="text-primary">GOOGLE_CSE_CX</code> to <code className="text-primary">.env.local</code>{" "}
-            to fetch live Google footprint results. Verify and Export work on this data too.
+            real export format. Add <code className="text-primary">SERPAPI_KEY</code> to{" "}
+            <code className="text-primary">.env.local</code> to fetch live footprint results, or switch to
+            Basic mode (no key needed). Verify and Export work on this data too.
           </p>
         </div>
       )}

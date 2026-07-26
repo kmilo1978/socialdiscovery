@@ -5,8 +5,7 @@
 //  - "basic": scrapes DuckDuckGo HTML + Bing HTML (no API key). Both support
 //             site: operators. DDG goes first; if throttled, falls back to Bing.
 //             Free but SLOWER (throttled 2s between requests) and capped.
-//  - "api"  : Google Custom Search JSON API or SerpAPI. Faster, more results,
-//             but consumes your paid/free quota.
+//  - "api"  : SerpAPI. Faster, more results, but consumes your paid/free quota.
 //
 // All errors are scrubbed of secrets before being thrown (see security.ts).
 
@@ -19,17 +18,16 @@ export interface RawResult {
 }
 
 export type SearchMode = "basic" | "api";
-export type ProviderName = "google_cse" | "serpapi" | "duckduckgo" | "bing" | "basic_multi" | "none";
+export type ProviderName = "serpapi" | "duckduckgo" | "bing" | "basic_multi" | "none";
 
 // Per-mode limits (max results the UI/route will honor + throttle delay).
 export const MODE_LIMITS: Record<SearchMode, { maxResults: number; delayMs: number; label: string }> = {
   basic: { maxResults: 40, delayMs: 2000, label: "Basic (Footprints)" },
-  api: { maxResults: 100, delayMs: 0, label: "API (Google / SerpAPI)" },
+  api: { maxResults: 100, delayMs: 0, label: "API (SerpAPI)" },
 };
 
 /** Which API provider is configured (for "api" mode). */
 export function apiProvider(): ProviderName {
-  if (process.env.GOOGLE_CSE_KEY && process.env.GOOGLE_CSE_CX) return "google_cse";
   if (process.env.SERPAPI_KEY) return "serpapi";
   return "none";
 }
@@ -283,31 +281,6 @@ async function searchBasicMulti(query: string, gl = ""): Promise<RawResult[]> {
 }
 
 // ---------------------------------------------------------------------------
-// API MODE — Google Custom Search JSON API
-// ---------------------------------------------------------------------------
-
-async function searchGoogleCSE(query: string, start = 1, gl = ""): Promise<RawResult[]> {
-  const key = process.env.GOOGLE_CSE_KEY!;
-  const cx = process.env.GOOGLE_CSE_CX!;
-  const url = new URL("https://www.googleapis.com/customsearch/v1");
-  url.searchParams.set("key", key);
-  url.searchParams.set("cx", cx);
-  url.searchParams.set("q", query);
-  url.searchParams.set("num", "10");
-  url.searchParams.set("start", String(start));
-  if (gl) {
-    url.searchParams.set("gl", gl);
-    url.searchParams.set("cr", `country${gl.toUpperCase()}`);
-  }
-
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Google CSE error ${res.status}`);
-  const data = await res.json();
-  const items = (data.items || []) as Array<{ title: string; link: string; snippet: string }>;
-  return items.map((i) => ({ title: i.title || "", link: i.link || "", snippet: i.snippet || "" }));
-}
-
-// ---------------------------------------------------------------------------
 // API MODE — SerpAPI
 // ---------------------------------------------------------------------------
 
@@ -326,6 +299,8 @@ async function searchSerpApi(query: string, start = 0, gl = ""): Promise<RawResu
   }
   url.searchParams.set("api_key", key);
   if (gl) {
+    // gl = geolocation (ISO country code); google_domain keeps results on google.com
+    // while gl localizes them, matching the region the user selected.
     url.searchParams.set("gl", gl);
     url.searchParams.set("google_domain", "google.com");
   }
@@ -356,8 +331,6 @@ export async function runSearch(query: string, page = 0, mode: SearchMode = "api
 
   const provider = apiProvider();
   switch (provider) {
-    case "google_cse":
-      return searchGoogleCSE(query, page * 10 + 1, gl);
     case "serpapi":
       return searchSerpApi(query, page * 10, gl);
     default:

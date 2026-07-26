@@ -397,3 +397,49 @@ export function getDashboardStats(): DashboardStats {
     recentSearches: listSearches(5),
   };
 }
+
+// ---------------------------------------------------------------------------
+// API provider usage (for the API Access page — real quota consumption)
+// ---------------------------------------------------------------------------
+
+export interface ApiUsage {
+  /** Real "api" mode searches (billable against the provider's quota) this calendar month. */
+  monthlyApiSearches: number;
+  /** Same, but for today (useful to spot spikes). */
+  todayApiSearches: number;
+  /** Total "api" mode searches ever run (lifetime). */
+  lifetimeApiSearches: number;
+}
+
+/**
+ * Counts real provider-billed searches (mode='api', not demo) so the API Access
+ * page can show actual quota consumption instead of a fake number.
+ */
+export function getApiUsage(): ApiUsage {
+  const db = getDb();
+
+  const monthly = db
+    .prepare(
+      `SELECT COUNT(*) as c FROM searches
+       WHERE mode = 'api' AND provider != 'demo'
+         AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')`
+    )
+    .get() as { c: number };
+
+  const today = db
+    .prepare(
+      `SELECT COUNT(*) as c FROM searches
+       WHERE mode = 'api' AND provider != 'demo' AND date(created_at) = date('now')`
+    )
+    .get() as { c: number };
+
+  const lifetime = db
+    .prepare(`SELECT COUNT(*) as c FROM searches WHERE mode = 'api' AND provider != 'demo'`)
+    .get() as { c: number };
+
+  return {
+    monthlyApiSearches: monthly.c,
+    todayApiSearches: today.c,
+    lifetimeApiSearches: lifetime.c,
+  };
+}

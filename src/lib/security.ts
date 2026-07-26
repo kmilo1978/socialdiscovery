@@ -7,8 +7,7 @@
 
 /** Collects the current secret values from the environment. */
 function currentSecrets(): string[] {
-  return [process.env.GOOGLE_CSE_KEY, process.env.GOOGLE_CSE_CX, process.env.SERPAPI_KEY]
-    .filter((v): v is string => typeof v === "string" && v.length >= 6);
+  return [process.env.SERPAPI_KEY].filter((v): v is string => typeof v === "string" && v.length >= 6);
 }
 
 /**
@@ -20,10 +19,8 @@ export function scrubSecrets(input: string): string {
   for (const secret of currentSecrets()) {
     out = out.split(secret).join("[REDACTED]");
   }
-  // Also redact common API-key patterns and query params that could carry keys.
-  out = out
-    .replace(/AIza[0-9A-Za-z\-_]{20,}/g, "[REDACTED]") // Google API keys
-    .replace(/([?&](?:key|api_key|cx)=)[^&\s]+/gi, "$1[REDACTED]"); // key in URLs
+  // Also redact common API-key query params that could carry a key.
+  out = out.replace(/([?&](?:key|api_key)=)[^&\s]+/gi, "$1[REDACTED]");
   return out;
 }
 

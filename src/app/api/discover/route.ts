@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
         provider: "demo",
         demo: true,
         mode,
-        note: "Demo data. Add GOOGLE_CSE_KEY + GOOGLE_CSE_CX (or SERPAPI_KEY) to .env.local for real API results, or switch to Basic mode.",
+        note: "Demo data. Add SERPAPI_KEY to .env.local for real API results, or switch to Basic mode.",
         queries: footprints.map((f) => f.query),
         total: leads.length,
         rawCount: leads.length,
