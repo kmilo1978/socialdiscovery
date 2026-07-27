@@ -26,7 +26,7 @@ const EMAIL_PROVIDERS = [
 // site: operators per platform.
 const PLATFORM_SITES: Record<string, string[]> = {
   "instagram-keyword": ["instagram.com"],
-  "instagram-hashtag": ["instagram.com/explore/tags"],
+  "instagram-hashtag": ["instagram.com"],
   "twitter-keyword": ["twitter.com", "x.com"],
   "twitter-followers": ["twitter.com", "x.com"],
   "twitter-following": ["twitter.com", "x.com"],
@@ -77,6 +77,17 @@ function expandSynonyms(keyword: string): string {
  */
 export function buildFootprints(opts: FootprintOptions): BuiltQuery[] {
   const { platform, keyword } = opts;
+
+  // For Google Business, build a simple Maps query (no site: operator needed).
+  if (platform === "gmb-keyword") {
+    const parts = [keyword];
+    if (opts.city) parts.push(opts.city);
+    if (opts.country && opts.country !== "All Countries" && !opts.country.startsWith("—")) {
+      parts.push(opts.country);
+    }
+    return [{ query: parts.join(" "), site: "google.com/maps", platform }];
+  }
+
   const sites =
     platform === "multiple-channels"
       ? Object.values(PLATFORM_SITES).flat()
@@ -84,7 +95,11 @@ export function buildFootprints(opts: FootprintOptions): BuiltQuery[] {
 
   // Keyword term
   let keywordTerm: string;
-  if (opts.exactMatch) {
+  if (platform === "instagram-hashtag") {
+    // For hashtag search, prepend # and search for the tag itself
+    const tag = keyword.replace(/^#/, "");
+    keywordTerm = `"#${tag}"`;
+  } else if (opts.exactMatch) {
     keywordTerm = `"${keyword}"`;
   } else if (opts.includeSynonyms) {
     keywordTerm = expandSynonyms(keyword);
@@ -101,21 +116,20 @@ export function buildFootprints(opts: FootprintOptions): BuiltQuery[] {
   // City term (optional, appended after country for more specific results)
   const cityTerm = opts.city ? ` "${opts.city}"` : "";
 
+// Common email indicator — using just "@" captures ALL emails (personal AND corporate).
+// Previously we listed specific providers (gmail, hotmail, etc.) which missed corporate domains.
+
   // Email requirement (footprint that forces an exposed contact email)
   // For Google Business, skip email requirement — GMB profiles expose phone/website instead.
   const emailTerm =
     opts.requireEmail && !platform.startsWith("gmb")
-      ? ` (${EMAIL_PROVIDERS.map((p) => `"@${p}"`).join(" OR ")})`
+      ? ` "@"`
       : "";
-
-  // Hashtag handling
-  const hashtagTerm =
-    platform === "instagram-hashtag" ? `` : "";
 
   return sites.map((site) => ({
     site,
     platform,
-    query: `site:${site} ${keywordTerm}${countryTerm}${cityTerm}${emailTerm}${hashtagTerm}`.trim(),
+    query: `site:${site} ${keywordTerm}${countryTerm}${cityTerm}${emailTerm}`.trim(),
   }));
 }
 

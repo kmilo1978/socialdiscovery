@@ -258,19 +258,7 @@ export function ResultsPage({ data, onBack }: ResultsPageProps) {
         </div>
       )}
 
-      {/* Footprint queries */}
-      {data.queries?.length > 0 && (
-        <div className="bg-card rounded-lg border border-border p-3">
-          <div className="text-xs text-muted-foreground mb-1.5">Footprint queries used:</div>
-          <div className="flex flex-wrap gap-2">
-            {data.queries.map((q, i) => (
-              <code key={i} className="text-[11px] px-2 py-1 rounded bg-background border border-border text-primary font-mono">
-                {q}
-              </code>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Footprint queries - hidden from public view for security */}
 
       {/* Search + Filters */}
       <div className="flex items-center gap-3">

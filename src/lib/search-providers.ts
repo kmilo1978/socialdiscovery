@@ -281,7 +281,53 @@ async function searchBasicMulti(query: string, gl = ""): Promise<RawResult[]> {
 }
 
 // ---------------------------------------------------------------------------
-// API MODE — SerpAPI
+// API MODE — SerpAPI (Google Maps engine for GMB)
+// ---------------------------------------------------------------------------
+
+async function searchGoogleMaps(query: string, gl = ""): Promise<RawResult[]> {
+  const key = process.env.SERPAPI_KEY!;
+  const url = new URL("https://serpapi.com/search.json");
+  url.searchParams.set("engine", "google_maps");
+  url.searchParams.set("q", query);
+  url.searchParams.set("api_key", key);
+  if (gl) {
+    url.searchParams.set("gl", gl);
+  }
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`SerpAPI Maps error ${res.status}`);
+  const data = await res.json();
+  const items = (data.local_results || []) as Array<{
+    title?: string;
+    address?: string;
+    phone?: string;
+    website?: string;
+    place_id?: string;
+    rating?: number;
+    reviews?: number;
+    type?: string;
+    thumbnail?: string;
+  }>;
+
+  // Convert Maps results to RawResult format so the extractor can process them.
+  return items.map((i) => {
+    const parts: string[] = [];
+    if (i.phone) parts.push(i.phone);
+    if (i.website) parts.push(i.website);
+    if (i.address) parts.push(i.address);
+    if (i.rating) parts.push(`Rating: ${i.rating}`);
+    if (i.type) parts.push(i.type);
+
+    return {
+      title: i.title || "",
+      link: i.website || `https://www.google.com/maps/place/?q=place_id:${i.place_id || ""}`,
+      snippet: parts.join(" | "),
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// API MODE — SerpAPI (Google Search engine)
 // ---------------------------------------------------------------------------
 
 async function searchSerpApi(query: string, start = 0, gl = ""): Promise<RawResult[]> {
@@ -322,7 +368,7 @@ async function searchSerpApi(query: string, start = 0, gl = ""): Promise<RawResu
  * In basic mode, pagination isn't supported (single-page scraping), so
  * only page 0 yields results.
  */
-export async function runSearch(query: string, page = 0, mode: SearchMode = "api", gl = ""): Promise<RawResult[]> {
+export async function runSearch(query: string, page = 0, mode: SearchMode = "api", gl = "", platform = ""): Promise<RawResult[]> {
   if (mode === "basic") {
     if (page > 0) return [];
     await sleep(MODE_LIMITS.basic.delayMs);
@@ -330,10 +376,13 @@ export async function runSearch(query: string, page = 0, mode: SearchMode = "api
   }
 
   const provider = apiProvider();
-  switch (provider) {
-    case "serpapi":
-      return searchSerpApi(query, page * 10, gl);
-    default:
-      return [];
+  if (provider === "none") return [];
+
+  // Google Maps engine for GMB (much better results than web footprints).
+  if (platform === "gmb-keyword") {
+    if (page > 0) return []; // Maps API doesn't paginate the same way.
+    return searchGoogleMaps(query, gl);
   }
+
+  return searchSerpApi(query, page * 10, gl);
 }

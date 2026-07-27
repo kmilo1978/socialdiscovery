@@ -383,7 +383,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
             { label: "Exact Match", checked: exactMatch, onChange: setExactMatch },
             { label: "Avoid Duplicates", checked: avoidDuplicates, onChange: setAvoidDuplicates },
             { label: "Validate Emails", checked: validateEmails, onChange: setValidateEmails },
-            { label: "Require Email (footprint)", checked: requireEmail, onChange: setRequireEmail },
+            { label: "Require Email", checked: requireEmail, onChange: setRequireEmail },
           ].map((item) => (
             <label
               key={item.label}

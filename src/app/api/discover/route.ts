@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       usedQueries.push(fp.query);
       for (let page = 0; page < pagesNeeded; page++) {
         try {
-          const results = await runSearch(fp.query, page, mode, geoLocation);
+          const results = await runSearch(fp.query, page, mode, geoLocation, platform);
           rawAll.push(...results);
           if (results.length < 10) break;
         } catch (err) {
