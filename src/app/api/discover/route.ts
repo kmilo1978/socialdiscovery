@@ -165,6 +165,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // General post-filter: with/without email (applies to all platforms).
+    const filterEmail = typeof body.filterEmail === "string" ? body.filterEmail : "any";
+    if (filterEmail === "yes") {
+      leads = leads.filter((l) => l.email && l.email !== "—");
+    } else if (filterEmail === "no") {
+      leads = leads.filter((l) => !l.email || l.email === "—");
+    }
+
     // If nothing came back and we hit an error, surface it (scrubbed).
     if (leads.length === 0 && firstError) {
       try {

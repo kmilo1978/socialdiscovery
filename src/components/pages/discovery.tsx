@@ -97,6 +97,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
   const [requireEmail, setRequireEmail] = useState(true);
   const [enrichResults, setEnrichResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [filterEmail, setFilterEmail] = useState<"any" | "yes" | "no">("any");
 
   // GMB-specific filters
   const [gmbHasWebsite, setGmbHasWebsite] = useState<"any" | "yes" | "no">("any");
@@ -149,6 +150,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
           enrichResults,
           gmbHasWebsite: isGmb ? gmbHasWebsite : undefined,
           gmbHasPhone: isGmb ? gmbHasPhone : undefined,
+          filterEmail,
         }),
       });
 
@@ -397,6 +399,30 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
               <span className="text-sm text-foreground">{item.label}</span>
             </label>
           ))}
+        </div>
+
+        {/* Results filter: with/without email */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Filter Results by Email</label>
+          <div className="flex gap-2">
+            {([
+              { value: "any" as const, label: "All results" },
+              { value: "yes" as const, label: "With email only" },
+              { value: "no" as const, label: "Without email" },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setFilterEmail(opt.value)}
+                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  filterEmail === opt.value
+                    ? "bg-primary text-white"
+                    : "bg-secondary text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* GMB-specific filters (only shown for Google Business) */}
