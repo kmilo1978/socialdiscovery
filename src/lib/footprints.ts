@@ -34,6 +34,7 @@ const PLATFORM_SITES: Record<string, string[]> = {
   "linkedin-keyword": ["linkedin.com/in", "linkedin.com/company"],
   "youtube-keyword": ["youtube.com/@", "youtube.com/c", "youtube.com/channel"],
   "tiktok-keyword": ["tiktok.com/@"],
+  "gmb-keyword": ["google.com/maps/place", "business.google.com"],
 };
 
 export interface FootprintOptions {
@@ -101,9 +102,11 @@ export function buildFootprints(opts: FootprintOptions): BuiltQuery[] {
   const cityTerm = opts.city ? ` "${opts.city}"` : "";
 
   // Email requirement (footprint that forces an exposed contact email)
-  const emailTerm = opts.requireEmail
-    ? ` (${EMAIL_PROVIDERS.map((p) => `"@${p}"`).join(" OR ")})`
-    : "";
+  // For Google Business, skip email requirement — GMB profiles expose phone/website instead.
+  const emailTerm =
+    opts.requireEmail && !platform.startsWith("gmb")
+      ? ` (${EMAIL_PROVIDERS.map((p) => `"@${p}"`).join(" OR ")})`
+      : "";
 
   // Hashtag handling
   const hashtagTerm =
@@ -136,6 +139,7 @@ const SEARCH_TYPE_CODES: Record<string, string> = {
   "linkedin-keyword": "LINKEDIN_WORD",
   "youtube-keyword": "YOUTUBE_WORD",
   "tiktok-keyword": "TIKTOK_WORD",
+  "gmb-keyword": "GMB_WORD",
   "multiple-channels": "MULTI_WORD",
 };
 
@@ -150,5 +154,6 @@ export function platformFromUrl(url: string): string {
   if (url.includes("linkedin.com")) return "LinkedIn";
   if (url.includes("youtube.com")) return "YouTube";
   if (url.includes("tiktok.com")) return "TikTok";
+  if (url.includes("google.com/maps") || url.includes("business.google.com")) return "Google Business";
   return "Web";
 }

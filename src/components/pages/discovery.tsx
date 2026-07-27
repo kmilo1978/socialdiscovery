@@ -29,6 +29,7 @@ const searchTypeCodes: Record<string, string> = {
   "linkedin-keyword": "LINKEDIN_WORD",
   "youtube-keyword": "YOUTUBE_WORD",
   "tiktok-keyword": "TIKTOK_WORD",
+  "gmb-keyword": "GMB_WORD",
   "multiple-channels": "MULTI_WORD",
 };
 
@@ -42,6 +43,7 @@ const platformLabels: Record<string, string> = {
   "linkedin-keyword": "LinkedIn Keyword Search",
   "youtube-keyword": "YouTube Keyword Search",
   "tiktok-keyword": "TikTok Keyword Search",
+  "gmb-keyword": "Google Business Keyword Search",
   "multiple-channels": "Multiple Channels Search",
 };
 

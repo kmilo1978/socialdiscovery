@@ -26,6 +26,7 @@ import {
   AtSign,
   Users,
   UserPlus,
+  MapPin,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -98,6 +99,14 @@ const navigation: NavItem[] = [
           { id: "tiktok-keyword", label: "Keyword", icon: <Hash size={14} /> },
         ],
       },
+      {
+        id: "gmb",
+        label: "Google Business",
+        icon: <MapPin size={16} />,
+        children: [
+          { id: "gmb-keyword", label: "Keyword", icon: <Hash size={14} /> },
+        ],
+      },
       { id: "multiple-channels", label: "Multiple Channels", icon: <Layers size={16} /> },
     ],
   },
@@ -146,6 +155,8 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       "youtube-keyword": t.nav.keyword,
       tiktok: t.nav.tiktok,
       "tiktok-keyword": t.nav.keyword,
+      gmb: "Google Business",
+      "gmb-keyword": t.nav.keyword,
       "multiple-channels": t.nav.multipleChannels,
       "email-validator": t.nav.emailValidator,
       "single-validation": t.nav.singleValidation,

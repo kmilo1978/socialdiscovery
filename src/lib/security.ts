@@ -95,6 +95,7 @@ export const ALLOWED_PLATFORMS = new Set([
   "linkedin-keyword",
   "youtube-keyword",
   "tiktok-keyword",
+  "gmb-keyword",
   "multiple-channels",
 ]);
 

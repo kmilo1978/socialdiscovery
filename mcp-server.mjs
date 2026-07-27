@@ -48,7 +48,7 @@ const TOOLS = [
             "instagram-keyword", "instagram-hashtag",
             "twitter-keyword", "twitter-followers", "twitter-following",
             "facebook-keyword", "linkedin-keyword",
-            "youtube-keyword", "tiktok-keyword", "multiple-channels",
+            "youtube-keyword", "tiktok-keyword", "gmb-keyword", "multiple-channels",
           ],
         },
         keyword: { type: "string", description: "Search keyword (e.g. 'marketing manager', 'plumber')" },
