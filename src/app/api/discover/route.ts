@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
     const platform = sanitizePlatform(body.platform);
     const keyword = sanitizeKeyword(body.keyword);
     const country = sanitizeLabel(body.country) || "All Countries";
+    const city = sanitizeLabel(body.city, 60) || "";
     const mode: SearchMode = body.mode === "basic" ? "basic" : "api";
     const geoLocation = sanitizeLabel(body.geoLocation, 10) || "";
     const exactMatch = toBool(body.exactMatch);
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
       platform,
       keyword,
       country,
+      city,
       exactMatch,
       includeSynonyms,
       requireEmail,

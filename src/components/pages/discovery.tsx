@@ -83,6 +83,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
   const { addToast } = useToast();
   const [keyword, setKeyword] = useState("");
   const [country, setCountry] = useState("Colombia");
+  const [city, setCity] = useState(""); // optional city for more specific footprints
   const [geoLocation, setGeoLocation] = useState("co"); // gl code (empty = global)
   const [mode, setMode] = useState<Mode>("api");
   const [maxResults, setMaxResults] = useState(50);
@@ -129,6 +130,7 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
           platform,
           keyword,
           country,
+          city,
           mode,
           geoLocation,
           maxResults: clamped,
@@ -301,6 +303,21 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
               className="w-full h-10 px-3 bg-background rounded-lg border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
             />
           </div>
+        </div>
+
+        {/* City (optional) */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground flex items-center justify-between">
+            <span>City</span>
+            <span className="text-[11px] text-muted-foreground font-normal">optional</span>
+          </label>
+          <input
+            type="text"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder='e.g. "Bogotá", "Medellín", "New York"'
+            className="w-full h-10 px-3 bg-background rounded-lg border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+          />
         </div>
 
         {/* Search Geolocation */}

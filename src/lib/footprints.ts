@@ -40,6 +40,7 @@ export interface FootprintOptions {
   platform: string;
   keyword: string;
   country?: string;
+  city?: string;
   exactMatch?: boolean;
   includeSynonyms?: boolean;
   requireEmail?: boolean; // force results that expose an email
@@ -96,6 +97,9 @@ export function buildFootprints(opts: FootprintOptions): BuiltQuery[] {
       ? ` "${opts.country}"`
       : "";
 
+  // City term (optional, appended after country for more specific results)
+  const cityTerm = opts.city ? ` "${opts.city}"` : "";
+
   // Email requirement (footprint that forces an exposed contact email)
   const emailTerm = opts.requireEmail
     ? ` (${EMAIL_PROVIDERS.map((p) => `"@${p}"`).join(" OR ")})`
@@ -108,7 +112,7 @@ export function buildFootprints(opts: FootprintOptions): BuiltQuery[] {
   return sites.map((site) => ({
     site,
     platform,
-    query: `site:${site} ${keywordTerm}${countryTerm}${emailTerm}${hashtagTerm}`.trim(),
+    query: `site:${site} ${keywordTerm}${countryTerm}${cityTerm}${emailTerm}${hashtagTerm}`.trim(),
   }));
 }
 
