@@ -98,6 +98,11 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
   const [enrichResults, setEnrichResults] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
+  // GMB-specific filters
+  const [gmbHasWebsite, setGmbHasWebsite] = useState<"any" | "yes" | "no">("any");
+  const [gmbHasPhone, setGmbHasPhone] = useState<"any" | "yes" | "no">("any");
+
+  const isGmb = platform === "gmb-keyword";
   const title = platformLabels[platform] || "Discovery Search";
   const cap = MODE_LIMITS[mode].maxResults;
 
@@ -142,6 +147,8 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
           validateEmails,
           requireEmail,
           enrichResults,
+          gmbHasWebsite: isGmb ? gmbHasWebsite : undefined,
+          gmbHasPhone: isGmb ? gmbHasPhone : undefined,
         }),
       });
 
@@ -391,6 +398,59 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
             </label>
           ))}
         </div>
+
+        {/* GMB-specific filters (only shown for Google Business) */}
+        {isGmb && (
+          <div className="space-y-3 p-4 rounded-lg border border-border bg-background/50">
+            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+              <MapPin size={14} className="text-primary" />
+              Google Business Filters
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <span className="text-xs text-muted-foreground">Website</span>
+                <div className="flex gap-2">
+                  {(["any", "yes", "no"] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setGmbHasWebsite(v)}
+                      className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                        gmbHasWebsite === v
+                          ? "bg-primary text-white"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {v === "any" ? "Any" : v === "yes" ? "Has website" : "No website"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-xs text-muted-foreground">Phone</span>
+                <div className="flex gap-2">
+                  {(["any", "yes", "no"] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setGmbHasPhone(v)}
+                      className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                        gmbHasPhone === v
+                          ? "bg-primary text-white"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {v === "any" ? "Any" : v === "yes" ? "Has phone" : "No phone"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            {gmbHasWebsite === "no" && (
+              <p className="text-[11px] text-primary">
+                Businesses without a website are potential clients for web design/marketing services.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Start Search Button */}
         <button

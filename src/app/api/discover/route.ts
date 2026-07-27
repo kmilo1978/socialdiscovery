@@ -59,6 +59,8 @@ export async function POST(req: NextRequest) {
     const validateEmails = toBool(body.validateEmails);
     const requireEmail = toBool(body.requireEmail, true);
     const enrichResults = toBool(body.enrichResults);
+    const gmbHasWebsite = typeof body.gmbHasWebsite === "string" ? body.gmbHasWebsite : "any";
+    const gmbHasPhone = typeof body.gmbHasPhone === "string" ? body.gmbHasPhone : "any";
 
     // Clamp maxResults to the selected mode's ceiling (anti-abuse / cost control).
     const modeCap = MODE_LIMITS[mode].maxResults;
@@ -148,6 +150,20 @@ export async function POST(req: NextRequest) {
 
     let leads = extractLeads(rawAll, country, { avoidDuplicates });
     leads = leads.slice(0, maxResults);
+
+    // GMB-specific post-filters (website / phone presence).
+    if (platform === "gmb-keyword") {
+      if (gmbHasWebsite === "yes") {
+        leads = leads.filter((l) => l.website && l.website !== "—");
+      } else if (gmbHasWebsite === "no") {
+        leads = leads.filter((l) => !l.website || l.website === "—");
+      }
+      if (gmbHasPhone === "yes") {
+        leads = leads.filter((l) => l.phone && l.phone !== "—");
+      } else if (gmbHasPhone === "no") {
+        leads = leads.filter((l) => !l.phone || l.phone === "—");
+      }
+    }
 
     // If nothing came back and we hit an error, surface it (scrubbed).
     if (leads.length === 0 && firstError) {
