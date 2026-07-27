@@ -210,6 +210,22 @@ export function SettingsPage() {
               and automatic stop on reply.
             </p>
           </div>
+
+          <div className="p-3 rounded-lg border border-border bg-background/50">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="text-base">🔗</span>
+              <span className="text-sm font-medium text-foreground">200+ Integrations (Composio)</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">SOON</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Send your leads directly to HubSpot, Google Sheets, Notion, Salesforce, Slack, Airtable
+              or any of 200+ platforms via{" "}
+              <a href="https://composio.dev" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                Composio.dev
+              </a>
+              . Connect once, export anywhere.
+            </p>
+          </div>
         </div>
       </div>
 
