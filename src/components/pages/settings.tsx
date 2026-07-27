@@ -226,6 +226,18 @@ export function SettingsPage() {
               . Connect once, export anywhere.
             </p>
           </div>
+
+          <div className="p-3 rounded-lg border border-border bg-background/50">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="text-base">👤</span>
+              <span className="text-sm font-medium text-foreground">Profile Enrichment</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">SOON</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Automatically visit each profile to extract full bio, follower count, verified status,
+              and external links. Deeper data, better scoring.
+            </p>
+          </div>
         </div>
       </div>
 

@@ -384,7 +384,6 @@ export function DiscoveryPage({ platform, onResults }: DiscoveryPageProps) {
             { label: "Avoid Duplicates", checked: avoidDuplicates, onChange: setAvoidDuplicates },
             { label: "Validate Emails", checked: validateEmails, onChange: setValidateEmails },
             { label: "Require Email (footprint)", checked: requireEmail, onChange: setRequireEmail },
-            { label: "Enrich Profiles (bio + followers)", checked: enrichResults, onChange: setEnrichResults },
           ].map((item) => (
             <label
               key={item.label}
