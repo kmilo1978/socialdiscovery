@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, Bell, CreditCard, Globe, Server } from "lucide-react";
+import { User, Bell, CreditCard, Globe, Server, Zap } from "lucide-react";
 import { useI18n, LOCALES, type Locale } from "@/lib/i18n";
 
 export function SettingsPage() {
@@ -154,6 +154,62 @@ export function SettingsPage() {
               </button>
             )
           )}
+        </div>
+      </div>
+
+      {/* Coming Soon */}
+      <div className="bg-card rounded-xl border border-primary/20 p-6 bg-gradient-to-br from-primary/5 to-purple-500/5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Zap size={16} className="text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Coming Soon</h3>
+            <p className="text-[11px] text-muted-foreground">Building the future of sales automation</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+          We&apos;re building the future of sales automation. Soon you&apos;ll be able to connect your WhatsApp account
+          and send email sequences directly from the platform.
+        </p>
+
+        <div className="space-y-3">
+          <div className="p-3 rounded-lg border border-border bg-background/50">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="text-base">🤖</span>
+              <span className="text-sm font-medium text-foreground">AI Cold Outreach Agent</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">SOON</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Design and automate complete sequences of highly personalized emails and WhatsApp messages
+              to convert cold prospects into scheduled meetings.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-lg border border-border bg-background/50">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="text-base">💬</span>
+              <span className="text-sm font-medium text-foreground">WhatsApp Integration</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">SOON</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Connect your WhatsApp Business account and send personalized messages at scale
+              directly to the leads you discover.
+            </p>
+          </div>
+
+          <div className="p-3 rounded-lg border border-border bg-background/50">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              <span className="text-base">📧</span>
+              <span className="text-sm font-medium text-foreground">Email Sequences</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">SOON</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Multi-step drip campaigns with AI-written follow-ups, smart timing,
+              and automatic stop on reply.
+            </p>
+          </div>
         </div>
       </div>
 
