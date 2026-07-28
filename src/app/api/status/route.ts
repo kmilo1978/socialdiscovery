@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { activeProvider } from "@/lib/search-providers";
 import { getApiUsage } from "@/lib/db";
 import { safeErrorMessage } from "@/lib/security";
+import { getKeyPoolInfo } from "@/lib/api-keys";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,12 +22,17 @@ export async function GET() {
     console.error("getApiUsage failed:", safeErrorMessage(err));
   }
 
+  const pool = getKeyPoolInfo();
+
   return NextResponse.json({
     provider,
     connected: provider !== "none",
     serpapi: {
-      hasKey: Boolean(process.env.SERPAPI_KEY),
-      monthlyFreeQuota: SERPAPI_FREE_TIER_MONTHLY,
+      hasKey: Boolean(process.env.SERPAPI_KEY || process.env.SERPAPI_KEYS),
+      totalKeys: pool.totalKeys,
+      totalMonthlyCredits: pool.totalMonthlyCredits,
+      keys: pool.keys,
+      monthlyFreeQuota: pool.totalMonthlyCredits || SERPAPI_FREE_TIER_MONTHLY,
       usage,
     },
     publicApiKey: process.env.PUBLIC_API_KEY

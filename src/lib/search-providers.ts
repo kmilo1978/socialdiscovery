@@ -10,6 +10,7 @@
 // All errors are scrubbed of secrets before being thrown (see security.ts).
 
 import { scrubSecrets } from "./security";
+import { getNextApiKey } from "./api-keys";
 
 export interface RawResult {
   title: string;
@@ -28,6 +29,9 @@ export const MODE_LIMITS: Record<SearchMode, { maxResults: number; delayMs: numb
 
 /** Which API provider is configured (for "api" mode). */
 export function apiProvider(): ProviderName {
+  // Check for key pool (SERPAPI_KEYS) or single key (SERPAPI_KEY)
+  const pool = process.env.SERPAPI_KEYS;
+  if (pool && pool.split(",").some((k) => k.trim().length > 10)) return "serpapi";
   if (process.env.SERPAPI_KEY) return "serpapi";
   return "none";
 }
@@ -285,7 +289,8 @@ async function searchBasicMulti(query: string, gl = ""): Promise<RawResult[]> {
 // ---------------------------------------------------------------------------
 
 async function searchGoogleMaps(query: string, gl = ""): Promise<RawResult[]> {
-  const key = process.env.SERPAPI_KEY!;
+  const key = getNextApiKey();
+  if (!key) throw new Error("No SerpAPI key configured");
   const url = new URL("https://serpapi.com/search.json");
   url.searchParams.set("engine", "google_maps");
   url.searchParams.set("q", query);
@@ -331,7 +336,8 @@ async function searchGoogleMaps(query: string, gl = ""): Promise<RawResult[]> {
 // ---------------------------------------------------------------------------
 
 async function searchSerpApi(query: string, start = 0, gl = ""): Promise<RawResult[]> {
-  const key = process.env.SERPAPI_KEY!;
+  const key = getNextApiKey();
+  if (!key) throw new Error("No SerpAPI key configured");
   const url = new URL("https://serpapi.com/search.json");
   url.searchParams.set("engine", "google");
   url.searchParams.set("q", query);
