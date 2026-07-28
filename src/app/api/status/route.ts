@@ -29,7 +29,9 @@ export async function GET() {
       monthlyFreeQuota: SERPAPI_FREE_TIER_MONTHLY,
       usage,
     },
-    // Email validation always works (no key needed)
+    publicApiKey: process.env.PUBLIC_API_KEY
+      ? { configured: true, key: process.env.PUBLIC_API_KEY }
+      : { configured: false },
     emailValidation: true,
   });
 }

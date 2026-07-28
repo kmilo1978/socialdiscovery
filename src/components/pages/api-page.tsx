@@ -35,7 +35,7 @@ interface ProviderStatus {
 
 export function ApiPage() {
   const [showKey, setShowKey] = useState(false);
-  const apiKey = "sk_live_4f7cff_a8b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6";
+  const [apiKey, setApiKey] = useState("Loading...");
   const [status, setStatus] = useState<ProviderStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,7 +43,11 @@ export function ApiPage() {
     setLoading(true);
     fetch("/api/status")
       .then((r) => r.json())
-      .then(setStatus)
+      .then((data) => {
+        setStatus(data);
+        if (data?.publicApiKey?.key) setApiKey(data.publicApiKey.key);
+        else setApiKey("Not configured — set PUBLIC_API_KEY in .env.local");
+      })
       .catch(() => setStatus(null))
       .finally(() => setLoading(false));
   };
@@ -228,13 +232,12 @@ export function ApiPage() {
         </div>
       </div>
 
-      {/* Local API Key (for your own scripts) */}
+      {/* Public API Key (for external tools) */}
       <div className="bg-card rounded-xl border border-border p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Local API Key</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Public API Key</h3>
         <p className="text-xs text-muted-foreground mb-3">
-          A demo credential for calling this app&apos;s own endpoints from external scripts. It is not sent to
-          any third party — the app talks to SerpAPI server-side using your <code className="text-primary">SERPAPI_KEY</code> from{" "}
-          <code className="text-primary">.env.local</code>, which never reaches the browser.
+          Use this key to call Social Discovery Engine from external tools (n8n, Make, Zapier, Python, cURL).
+          Send it as <code className="text-primary">Authorization: Bearer &lt;key&gt;</code> or <code className="text-primary">?api_key=&lt;key&gt;</code>.
         </p>
         <div className="flex items-center gap-3">
           <div className="flex-1 h-10 px-4 bg-background rounded-lg border border-border flex items-center">
@@ -279,17 +282,38 @@ export function ApiPage() {
 
       {/* Code Example */}
       <div className="bg-card rounded-xl border border-border p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Quick Start</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Quick Start (External Tools)</h3>
         <div className="bg-background rounded-lg border border-border p-4 overflow-x-auto">
           <pre className="text-sm font-mono text-foreground">
-            {`curl -X POST http://localhost:3000/api/discover \\
+            {`# Discovery search
+curl -X POST http://localhost:3000/api/discover \\
+  -H "Authorization: Bearer YOUR_PUBLIC_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "platform": "linkedin-keyword",
-    "keyword": "SaaS founders",
-    "country": "United States",
+    "keyword": "marketing manager",
+    "country": "Colombia",
+    "city": "Bogota",
     "mode": "api",
     "maxResults": 20
+  }'
+
+# Validate email
+curl -X POST http://localhost:3000/api/validate-email \\
+  -H "Authorization: Bearer YOUR_PUBLIC_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "email": "test@gmail.com" }'
+
+# Google Maps businesses
+curl -X POST http://localhost:3000/api/discover \\
+  -H "Authorization: Bearer YOUR_PUBLIC_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "platform": "gmb-keyword",
+    "keyword": "restaurante",
+    "country": "Colombia",
+    "city": "Medellin",
+    "mode": "api"
   }'`}
           </pre>
         </div>

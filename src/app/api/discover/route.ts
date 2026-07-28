@@ -20,6 +20,7 @@ import {
   safeErrorMessage,
 } from "@/lib/security";
 import { saveSearch } from "@/lib/db";
+import { authenticateRequest } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -29,6 +30,12 @@ const RL_LIMIT = 20;
 const RL_WINDOW = 60_000;
 
 export async function POST(req: NextRequest) {
+  // --- API key auth for external tools ---
+  const auth = authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   // --- Rate limiting (anti-abuse) ---
   const rl = rateLimit(`discover:${clientId(req)}`, RL_LIMIT, RL_WINDOW);
   if (!rl.allowed) {

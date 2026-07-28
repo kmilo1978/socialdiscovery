@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validateEmail } from "@/lib/email-validator";
 import { sanitizeEmail, rateLimit, clientId, safeErrorMessage } from "@/lib/security";
 import { saveValidation } from "@/lib/db";
+import { authenticateRequest } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,11 @@ const RL_WINDOW = 60_000;
 const MAX_BULK = 500;
 
 export async function POST(req: NextRequest) {
+  const auth = authenticateRequest(req);
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: 401 });
+  }
+
   const rl = rateLimit(`validate:${clientId(req)}`, RL_LIMIT, RL_WINDOW);
   if (!rl.allowed) {
     return NextResponse.json(
